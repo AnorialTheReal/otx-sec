@@ -1,0 +1,3 @@
+#!/bin/bash
+cd /opt/otx-sec/app
+/opt/otx-sec/venv/bin/python /opt/otx-sec/app/frontend.py
