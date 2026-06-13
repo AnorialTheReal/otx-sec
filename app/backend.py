@@ -197,10 +197,12 @@ def restart_services():
     return run_cmd(["systemctl", "restart", "otx-sec", "otx-process-monitor", "otx-network-monitor", "otx-persistence-monitor"])
 
 def run_integrity_check():
-    return run_cmd(["/opt/otx-sec/venv/bin/python", "/opt/otx-sec/integrity_check.py"], 300)
+    import sys
+    return run_cmd([sys.executable, str(BASE_DIR / "integrity_check.py")], 300)
 
 def rebuild_baseline():
-    return run_cmd(["/opt/otx-sec/venv/bin/python", "/opt/otx-sec/baseline.py"], 300)
+    import sys
+    return run_cmd([sys.executable, str(BASE_DIR / "baseline.py")], 300)
 
 def sha256(path):
     h = hashlib.sha256()
@@ -253,7 +255,9 @@ def delete_quarantine_file(path):
     p.unlink()
     return "Deleted."
 
-def restore_quarantine_file(path, target_dir="/home/anorial/Restored-OTX-Sec"):
+def restore_quarantine_file(path, target_dir=None):
+    if target_dir is None:
+        target_dir = str(Path.home() / "Restored-OTX-Sec")
     p = Path(path)
     if not str(p).startswith(str(QUARANTINE_DIR)):
         return "Blocked unsafe path."
@@ -698,7 +702,7 @@ def intel_lookup_hash(hash_value):
     # MalwareBazaar
     try:
         import sys
-        sys.path.insert(0, "/opt/otx-sec")
+        sys.path.insert(0, str(BASE_DIR))
 
         import threat_intel
 
@@ -728,7 +732,7 @@ def intel_lookup_ip(ip):
     out = []
     try:
         import sys
-        sys.path.insert(0, "/opt/otx-sec")
+        sys.path.insert(0, str(BASE_DIR))
         import threat_intel
         out.append("=== AbuseIPDB ===")
         out.append(threat_intel.abuseipdb_lookup(ip))
@@ -786,7 +790,7 @@ def intel_lookup_hash(hash_value):
     # MalwareBazaar
     try:
         import sys
-        sys.path.insert(0, "/opt/otx-sec")
+        sys.path.insert(0, str(BASE_DIR))
 
         import threat_intel
 
@@ -820,7 +824,7 @@ def intel_lookup_ip(ip):
 
     try:
         import sys
-        sys.path.insert(0, "/opt/otx-sec")
+        sys.path.insert(0, str(BASE_DIR))
         import threat_intel
 
         out.append("=== AbuseIPDB ===")
@@ -949,7 +953,7 @@ def intel_lookup_ip(ip):
 
     try:
         import sys
-        sys.path.insert(0, "/opt/otx-sec")
+        sys.path.insert(0, str(BASE_DIR))
         import threat_intel
 
         if settings.get("abuseipdb_api_key", "").strip():
@@ -1016,7 +1020,7 @@ def intel_lookup_hash(hash_value):
     # MalwareBazaar
     try:
         import sys
-        sys.path.insert(0, "/opt/otx-sec")
+        sys.path.insert(0, str(BASE_DIR))
 
         import threat_intel
 
@@ -1056,7 +1060,7 @@ def virustotal_file_lookup(path):
 def list_incidents(limit=500):
     try:
         import sqlite3
-        con = sqlite3.connect("/opt/otx-sec/db/incidents.db")
+        con = sqlite3.connect(str(BASE_DIR / "db" / "incidents.db"))
         cur = con.cursor()
         cur.execute("""
             SELECT id,created,severity,score,title,object,reasons,related_events,status
@@ -1088,7 +1092,7 @@ def list_incidents(limit=500):
 def close_incident(incident_id):
     try:
         import sqlite3
-        con = sqlite3.connect("/opt/otx-sec/db/incidents.db")
+        con = sqlite3.connect(str(BASE_DIR / "db" / "incidents.db"))
         cur = con.cursor()
         cur.execute("UPDATE incidents SET status='CLOSED' WHERE id=?", (incident_id,))
         con.commit()
@@ -1101,7 +1105,7 @@ def close_incident(incident_id):
 def reopen_incident(incident_id):
     try:
         import sqlite3
-        con = sqlite3.connect("/opt/otx-sec/db/incidents.db")
+        con = sqlite3.connect(str(BASE_DIR / "db" / "incidents.db"))
         cur = con.cursor()
         cur.execute("UPDATE incidents SET status='OPEN' WHERE id=?", (incident_id,))
         con.commit()
