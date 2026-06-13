@@ -740,9 +740,10 @@ class App(QMainWindow):
                 self.event_table.setItem(row, col, QTableWidgetItem(str(value)))
 
     def show_event(self, row, col):
+        # Show a readable security summary first, then raw JSON for debugging.
         if row < len(self.visible_events):
             self.details.setPlainText(
-                json.dumps(self.visible_events[row], indent=2, ensure_ascii=False)
+                backend.format_event_summary(self.visible_events[row])
             )
 
     def load_threats(self, severity):
@@ -855,7 +856,7 @@ class App(QMainWindow):
         real_path = backend.resolve_event_path(raw)
 
         actions = [
-            ("Show Details", lambda: details_widget.setPlainText(json.dumps(raw, indent=2, ensure_ascii=False))),
+            ("Show Details", lambda: details_widget.setPlainText(backend.format_event_summary(raw))),
             ("Allow File", lambda: QMessageBox.information(self, "Allow", backend.allow_path(real_path))),
             ("Block File", lambda: QMessageBox.information(self, "Block", backend.block_path(real_path))),
             ("Analyze File", lambda: QMessageBox.information(self, "Analyze", backend.analyze_path(real_path))),

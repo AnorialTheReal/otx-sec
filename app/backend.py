@@ -704,7 +704,7 @@ def intel_lookup_hash(hash_value):
         import sys
         sys.path.insert(0, str(BASE_DIR))
 
-        import threat_intel
+        from integrations import threat_intel
 
         results.append("=== MalwareBazaar ===")
         results.append(
@@ -733,7 +733,7 @@ def intel_lookup_ip(ip):
     try:
         import sys
         sys.path.insert(0, str(BASE_DIR))
-        import threat_intel
+        from integrations import threat_intel
         out.append("=== AbuseIPDB ===")
         out.append(threat_intel.abuseipdb_lookup(ip))
         out.append("\n=== GreyNoise ===")
@@ -792,7 +792,7 @@ def intel_lookup_hash(hash_value):
         import sys
         sys.path.insert(0, str(BASE_DIR))
 
-        import threat_intel
+        from integrations import threat_intel
 
         results.append("=== MalwareBazaar ===")
         results.append(
@@ -825,7 +825,7 @@ def intel_lookup_ip(ip):
     try:
         import sys
         sys.path.insert(0, str(BASE_DIR))
-        import threat_intel
+        from integrations import threat_intel
 
         out.append("=== AbuseIPDB ===")
         out.append(threat_intel.abuseipdb_lookup(ip))
@@ -954,7 +954,7 @@ def intel_lookup_ip(ip):
     try:
         import sys
         sys.path.insert(0, str(BASE_DIR))
-        import threat_intel
+        from integrations import threat_intel
 
         if settings.get("abuseipdb_api_key", "").strip():
             out.append("\n=== AbuseIPDB ===")
@@ -1022,7 +1022,7 @@ def intel_lookup_hash(hash_value):
         import sys
         sys.path.insert(0, str(BASE_DIR))
 
-        import threat_intel
+        from integrations import threat_intel
 
         results.append("=== MalwareBazaar ===")
         results.append(
@@ -1469,3 +1469,96 @@ def list_network_connections():
 
     rows.sort(key=lambda x: (x["risk"] != "HIGH", x["risk"] != "SUSPICIOUS", x["risk"] != "CLEAN", x["process"] or ""))
     return rows
+# Build a human-readable security summary for GUI display.
+# The raw JSON event is still shown below this summary for debugging.
+def format_event_summary(event):
+    severity = classify(event)
+    threat_verdict = event.get("threat_verdict", event.get("status", "UNKNOWN"))
+    threat_score = event.get("threat_score", event.get("risk_score", 0))
+    threat_reasons = event.get("threat_reasons", event.get("risk_reasons", []))
+
+    static = event.get("static_analysis") or {}
+    providers = event.get("threat_providers") or {}
+
+    lines = []
+
+    lines.append("OTX-Sec Event Summary")
+    lines.append("=====================")
+    lines.append(f"Severity: {severity}")
+    lines.append(f"Event: {event.get('event', event.get('status', 'EVENT'))}")
+    lines.append(f"Object: {event.get('file') or event.get('exe') or event.get('process') or event.get('remote_ip') or ''}")
+    lines.append(f"Time: {event.get('time', '')}")
+    lines.append("")
+
+    lines.append("Threat Intelligence")
+    lines.append("-------------------")
+    lines.append(f"Verdict: {threat_verdict}")
+    lines.append(f"Score: {threat_score}")
+
+    if threat_reasons:
+        lines.append("Reasons:")
+        for reason in threat_reasons[:20]:
+            lines.append(f" - {reason}")
+
+    if providers:
+        lines.append("")
+        lines.append("Providers:")
+
+        otx = providers.get("otx") or {}
+        if otx:
+            lines.append(f" - OTX: hits={otx.get('hits', 'N/A')} error={otx.get('error')}")
+
+        vt = providers.get("virustotal") or {}
+        if vt:
+            lines.append(
+                " - VirusTotal: "
+                f"malicious={vt.get('malicious', 0)} "
+                f"suspicious={vt.get('suspicious', 0)} "
+                f"error={vt.get('error')}"
+            )
+
+        mb = providers.get("malwarebazaar") or {}
+        if mb:
+            lines.append(
+                " - MalwareBazaar: "
+                f"found={mb.get('found', False)} "
+                f"hits={mb.get('hits', 'N/A')} "
+                f"error={mb.get('error')}"
+            )
+
+        urlhaus = providers.get("urlhaus") or {}
+        if urlhaus:
+            lines.append(
+                " - URLHaus: "
+                f"found={urlhaus.get('found', False)} "
+                f"hits={urlhaus.get('hits', 'N/A')} "
+                f"error={urlhaus.get('error')}"
+            )
+
+    if static:
+        lines.append("")
+        lines.append("Static Analysis")
+        lines.append("-------------------")
+        lines.append(f"File Type: {static.get('file_type', 'unknown')}")
+        lines.append(f"Entropy: {static.get('entropy', 'N/A')}")
+        lines.append(f"Risk Score: {static.get('risk_score', 0)}")
+        lines.append(f"Packed Suspected: {static.get('packed_suspected', False)}")
+
+        static_reasons = static.get("reasons", [])
+        if static_reasons:
+            lines.append("Reasons:")
+            for reason in static_reasons[:20]:
+                lines.append(f" - {reason}")
+
+        suspicious = static.get("suspicious_strings", [])
+        if suspicious:
+            lines.append("Suspicious Strings:")
+            for item in suspicious[:20]:
+                lines.append(f" - {item}")
+
+    lines.append("")
+    lines.append("Raw Event JSON")
+    lines.append("--------------")
+    lines.append(json.dumps(event, indent=2, ensure_ascii=False))
+
+    return "\n".join(lines)
