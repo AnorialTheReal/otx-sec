@@ -1,6 +1,7 @@
 from integrations.otx import OTXProvider
 from integrations.malwarebazaar import MalwareBazaarProvider
 from integrations.virustotal import VirusTotalProvider
+from integrations.urlhaus import URLHausProvider
 
 
 class ThreatEngine:
@@ -9,6 +10,7 @@ class ThreatEngine:
         self.otx = OTXProvider(self.settings.get("otx_api_key", ""))
         self.malwarebazaar = MalwareBazaarProvider()
         self.virustotal = VirusTotalProvider(self.settings.get("virustotal_api_key", ""))
+        self.urlhaus = URLHausProvider()
 
     def score_hash_result(self, otx_result, mb_result, vt_result):
         score = 0
@@ -91,34 +93,88 @@ class ThreatEngine:
 
     def lookup_domain(self, domain: str):
         otx_result = self.otx.domain_lookup(domain)
+        urlhaus_result = self.urlhaus.host_lookup(domain)
 
-        score = 50 if otx_result.get("hits", 0) > 0 else 0
-        verdict = "SUSPICIOUS" if score else "CLEAN"
+        score = 0
+        reasons = []
+
+        if otx_result.get("hits", 0) > 0:
+            score += 50
+            reasons.append("otx_domain_match")
+
+        if urlhaus_result.get("found"):
+            score += 70
+            reasons.append("urlhaus_host_match")
+
+        if otx_result.get("error"):
+            reasons.append("otx_unavailable_or_error")
+
+        if urlhaus_result.get("error") or urlhaus_result.get("hits") == -1:
+            reasons.append("urlhaus_unavailable_or_error")
+
+        score = min(score, 100)
+
+        if score >= 80:
+            verdict = "MALICIOUS"
+        elif score >= 40:
+            verdict = "SUSPICIOUS"
+        elif reasons and score == 0:
+            verdict = "UNKNOWN"
+        else:
+            verdict = "CLEAN"
 
         return {
             "type": "domain",
             "indicator": domain,
             "score": score,
             "verdict": verdict,
-            "reasons": ["otx_domain_match"] if score else [],
+            "reasons": reasons,
             "providers": {
                 "otx": otx_result,
+                "urlhaus": urlhaus_result,
             },
         }
 
     def lookup_url(self, url: str):
         otx_result = self.otx.url_lookup(url)
+        urlhaus_result = self.urlhaus.url_lookup(url)
 
-        score = 50 if otx_result.get("hits", 0) > 0 else 0
-        verdict = "SUSPICIOUS" if score else "CLEAN"
+        score = 0
+        reasons = []
+
+        if otx_result.get("hits", 0) > 0:
+            score += 50
+            reasons.append("otx_url_match")
+
+        if urlhaus_result.get("found"):
+            score += 80
+            reasons.append("urlhaus_url_match")
+
+        if otx_result.get("error"):
+            reasons.append("otx_unavailable_or_error")
+
+        if urlhaus_result.get("error") or urlhaus_result.get("hits") == -1:
+            reasons.append("urlhaus_unavailable_or_error")
+
+        score = min(score, 100)
+
+        if score >= 80:
+            verdict = "MALICIOUS"
+        elif score >= 40:
+            verdict = "SUSPICIOUS"
+        elif reasons and score == 0:
+            verdict = "UNKNOWN"
+        else:
+            verdict = "CLEAN"
 
         return {
             "type": "url",
             "indicator": url,
             "score": score,
             "verdict": verdict,
-            "reasons": ["otx_url_match"] if score else [],
+            "reasons": reasons,
             "providers": {
                 "otx": otx_result,
+                "urlhaus": urlhaus_result,
             },
         }
