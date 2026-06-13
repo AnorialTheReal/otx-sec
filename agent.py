@@ -1,4 +1,4 @@
-#!/opt/otx-sec/venv/bin/python
+#!/usr/bin/env python3
 
 import os
 import json
@@ -10,13 +10,18 @@ from pathlib import Path
 from datetime import datetime
 from OTXv2 import OTXv2, IndicatorTypes
 
-CONFIG_FILE = Path("/opt/otx-sec/config/settings.json")
-ALLOWLIST = Path("/opt/otx-sec/config/allowlist.json")
-BLOCKLIST = Path("/opt/otx-sec/config/blocklist.json")
+BASE_DIR = Path(os.environ.get("OTX_SEC_BASE_DIR", Path(__file__).resolve().parent))
+DATA_DIR = Path(os.environ.get("OTX_SEC_DATA_DIR", BASE_DIR / "data"))
+CONFIG_DIR = Path(os.environ.get("OTX_SEC_CONFIG_DIR", BASE_DIR / "config"))
+
+CONFIG_FILE = Path(os.environ.get("OTX_SEC_CONFIG_FILE", CONFIG_DIR / "settings.json"))
+ALLOWLIST = Path(os.environ.get("OTX_SEC_ALLOWLIST", CONFIG_DIR / "allowlist.json"))
+BLOCKLIST = Path(os.environ.get("OTX_SEC_BLOCKLIST", CONFIG_DIR / "blocklist.json"))
+
+DEFAULT_HOME = str(Path.home())
 
 WATCH_PATHS = [
-    "/home/anorial",
-    "/root",
+    DEFAULT_HOME,
     "/etc",
     "/usr/local/bin",
     "/opt",
@@ -35,14 +40,14 @@ EXCLUDE_DIRS = {
     "/lost+found",
     "/var/log",
     "/var/cache",
-    "/home/anorial/.cache",
-    "/home/anorial/.config/BraveSoftware",
-    "/home/anorial/.mozilla",
-    "/home/anorial/.steam",
-    "/home/anorial/.local/share/Steam",
+    str(Path.home() / ".cache"),
+    str(Path.home() / ".config" / "BraveSoftware"),
+    str(Path.home() / ".mozilla"),
+    str(Path.home() / ".steam"),
+    str(Path.home() / ".local" / "share" / "Steam"),
     "/var/lib/clamav",
     "/var/quarantine",
-    "/opt/otx-sec/venv",
+    str(BASE_DIR / "venv"),
 }
 
 SKIP_EXTENSIONS = {
@@ -69,13 +74,13 @@ SKIP_EXTENSIONS = {
 
 MAX_FILE_SIZE = 50 * 1024 * 1024
 
-QUARANTINE_DIR = "/var/quarantine/otx-sec"
-REPORT_FILE = "/var/log/otx-sec/report.jsonl"
-SCAN_INTERVAL = 300
+QUARANTINE_DIR = str(Path(os.environ.get("OTX_SEC_QUARANTINE_DIR", DATA_DIR / "quarantine")))
+REPORT_FILE = str(Path(os.environ.get("OTX_SEC_REPORT_FILE", DATA_DIR / "logs" / "report.jsonl")))
+SCAN_INTERVAL = int(os.environ.get("OTX_SEC_SCAN_INTERVAL", "300"))
 
 os.makedirs(QUARANTINE_DIR, exist_ok=True)
 os.makedirs(os.path.dirname(REPORT_FILE), exist_ok=True)
-os.makedirs("/opt/otx-sec/config", exist_ok=True)
+os.makedirs(CONFIG_DIR, exist_ok=True)
 
 seen_hashes = set()
 
@@ -130,20 +135,25 @@ def auto_quarantine_enabled():
 
 
 def notify(title, message):
+    cmd = [
+        "notify-send",
+        str(title)[:120],
+        str(message)[:1000],
+    ]
+
+    env = os.environ.copy()
+    env.setdefault("DISPLAY", ":0")
+
     try:
-        subprocess.Popen([
-            "sudo",
-            "-u",
-            "anorial",
-            "env",
-            "DISPLAY=:0",
-            "DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/1000/bus",
-            "notify-send",
-            title,
-            message,
-        ])
+        subprocess.Popen(
+            cmd,
+            env=env,
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
     except Exception:
-        pass
+        print(f"[NOTIFY] {title}: {message}", flush=True)
 
 
 def is_excluded(path):
