@@ -13,3 +13,6 @@ analysis/
 data/
 exports/
 db/*.json
+
+config/settings.json
+config/*key*
