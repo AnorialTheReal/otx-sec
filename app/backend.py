@@ -198,11 +198,11 @@ def restart_services():
 
 def run_integrity_check():
     import sys
-    return run_cmd([sys.executable, str(BASE_DIR / "integrity_check.py")], 300)
+    return run_cmd([sys.executable, str(BASE_DIR / "tools" / "integrity_check.py")], 300)
 
 def rebuild_baseline():
     import sys
-    return run_cmd([sys.executable, str(BASE_DIR / "baseline.py")], 300)
+    return run_cmd([sys.executable, str(BASE_DIR / "tools" / "baseline.py")], 300)
 
 def sha256(path):
     h = hashlib.sha256()

@@ -13,29 +13,29 @@
 ## Root/system services
 These may need elevated privileges depending on distro and config:
 
-- agent.py
+- tools/agent.py
   - scans configured paths
   - may need root for /etc, /boot, /root
   - writes reports to data/logs by default
 
-- process_monitor.py
+- monitors/process_monitor.py
   - process inspection
   - may work as user, root gives fuller visibility
 
-- network_monitor.py
+- monitors/network_monitor.py
   - connection inspection
   - may work as user, root gives fuller visibility
 
 - persistence_monitor.py
   - checks autostart/systemd/cron paths
 
-- audit_exporter.py
+- monitors/audit_exporter.py
   - requires auditd/ausearch access
 
-- db_writer.py
+- tools/db_writer.py
   - imports JSONL logs into SQLite
 
-- incident_engine.py
+- engines/incident_engine.py
   - builds incidents from events database
 
 ## Security rules
