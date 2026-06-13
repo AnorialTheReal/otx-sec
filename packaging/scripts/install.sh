@@ -28,7 +28,7 @@ cd "$BASE_DIR"
 
 $PYTHON_BIN -m venv venv
 "$BASE_DIR/venv/bin/python" -m pip install --upgrade pip
-"$BASE_DIR/venv/bin/python" -m pip install PySide6 psutil requests OTXv2
+"$BASE_DIR/venv/bin/python" -m pip install -r requirements.txt
 
 mkdir -p "$BASE_DIR/data/logs" "$BASE_DIR/data/quarantine" "$BASE_DIR/db" "$BASE_DIR/config"
 
