@@ -39,5 +39,12 @@ fi
 
 ln -sf "$BASE_DIR/otx-sec-gui" /usr/local/bin/otx-sec-gui
 
+if command -v systemctl >/dev/null 2>&1; then
+  cp "$BASE_DIR"/packaging/systemd/*.service /etc/systemd/system/
+  systemctl daemon-reload
+  echo "[*] Services installed. Enable with:"
+  echo "    sudo systemctl enable --now otx-sec-agent otx-process-monitor otx-network-monitor"
+fi
+
 echo "[+] Installed."
 echo "Run GUI with: otx-sec-gui"

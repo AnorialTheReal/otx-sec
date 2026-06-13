@@ -1,0 +1,15 @@
+[Unit]
+Description=OTX-Sec Process Monitor
+
+[Service]
+Type=simple
+Environment=OTX_SEC_BASE_DIR=/opt/otx-sec
+WorkingDirectory=/opt/otx-sec
+ExecStart=/opt/otx-sec/venv/bin/python /opt/otx-sec/process_monitor.py
+Restart=always
+RestartSec=10
+NoNewPrivileges=yes
+PrivateTmp=yes
+
+[Install]
+WantedBy=multi-user.target
