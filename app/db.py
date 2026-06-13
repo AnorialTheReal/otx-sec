@@ -3,7 +3,9 @@ import json
 from pathlib import Path
 from datetime import datetime
 
-DB = Path("/opt/otx-sec/db/events.db")
+import os
+BASE_DIR = Path(os.environ.get("OTX_SEC_BASE_DIR", Path(__file__).resolve().parent.parent))
+DB = Path(os.environ.get("OTX_SEC_EVENTS_DB", BASE_DIR / "db" / "events.db"))
 DB.parent.mkdir(parents=True, exist_ok=True)
 
 def connect():

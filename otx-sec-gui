@@ -1,3 +1,6 @@
-#!/bin/bash
-cd /opt/otx-sec/app
-/opt/otx-sec/venv/bin/python /opt/otx-sec/app/frontend.py
+#!/usr/bin/env bash
+set -euo pipefail
+
+BASE_DIR="${OTX_SEC_BASE_DIR:-$(cd "$(dirname "$0")" && pwd)}"
+cd "$BASE_DIR/app"
+exec "${PYTHON:-python3}" "$BASE_DIR/app/frontend.py"

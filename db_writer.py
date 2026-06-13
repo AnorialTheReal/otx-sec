@@ -1,4 +1,4 @@
-#!/opt/otx-sec/venv/bin/python
+#!/usr/bin/env python3
 import sys, json, time
 from pathlib import Path
 
