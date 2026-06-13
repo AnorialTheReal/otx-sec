@@ -1,15 +1,17 @@
 #!/usr/bin/env python3
 
 import sys
+import os
 import json
 from pathlib import Path
 
-sys.path.insert(0, "/opt/otx-sec/app")
+BASE_DIR = Path(os.environ.get("OTX_SEC_BASE_DIR", Path(__file__).resolve().parent))
+sys.path.insert(0, str(BASE_DIR / "app"))
 
 import db
 import backend
 
-LOG_DIR = Path("/var/log/otx-sec")
+LOG_DIR = Path(os.environ.get("OTX_SEC_LOG_DIR", BASE_DIR / "data" / "logs"))
 
 MAP = {
     "File Scanner": "report.jsonl",

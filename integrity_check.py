@@ -4,9 +4,11 @@ import os
 import json
 import hashlib
 from datetime import datetime
+from pathlib import Path
 
-DB_FILE = "/opt/otx-sec/db/system_hashes.json"
-REPORT_FILE = "/var/log/otx-sec/integrity_report.jsonl"
+BASE_DIR = Path(os.environ.get("OTX_SEC_BASE_DIR", Path(__file__).resolve().parent))
+DB_FILE = str(Path(os.environ.get("OTX_SEC_SYSTEM_HASHES", BASE_DIR / "db" / "system_hashes.json")))
+REPORT_FILE = str(Path(os.environ.get("OTX_SEC_INTEGRITY_REPORT", BASE_DIR / "data" / "logs" / "integrity_report.jsonl")))
 
 def sha256(path):
     h = hashlib.sha256()

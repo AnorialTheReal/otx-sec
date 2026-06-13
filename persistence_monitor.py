@@ -7,9 +7,11 @@ import json
 import time
 import hashlib
 from datetime import datetime
+from pathlib import Path
 
-REPORT = "/var/log/otx-sec/persistence_report.jsonl"
-DB = "/opt/otx-sec/db/persistence_baseline.json"
+BASE_DIR = Path(os.environ.get("OTX_SEC_BASE_DIR", Path(__file__).resolve().parent))
+REPORT = str(Path(os.environ.get("OTX_SEC_PERSISTENCE_REPORT", BASE_DIR / "data" / "logs" / "persistence_report.jsonl")))
+DB = str(Path(os.environ.get("OTX_SEC_PERSISTENCE_DB", BASE_DIR / "db" / "persistence_baseline.json")))
 
 WATCH_PATHS = [
     "/etc/systemd/system",
@@ -18,7 +20,7 @@ WATCH_PATHS = [
     "/var/spool/cron",
     "/etc/profile.d",
     "/etc/xdg/autostart",
-    "/home/anorial/.config/autostart",
+    str(Path.home() / ".config" / "autostart"),
 ]
 
 INTERVAL = 60

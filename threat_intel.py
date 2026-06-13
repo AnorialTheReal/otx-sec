@@ -2,7 +2,8 @@
 import sys, json
 from pathlib import Path
 
-sys.path.insert(0, "/opt/otx-sec/app")
+BASE_DIR = Path(os.environ.get("OTX_SEC_BASE_DIR", Path(__file__).resolve().parent))
+sys.path.insert(0, str(BASE_DIR / "app"))
 import backend
 
 def vt_hash(hash_value):

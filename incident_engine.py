@@ -1,13 +1,15 @@
 #!/usr/bin/env python3
 
 import sqlite3
+import os
 import json
 import time
 from pathlib import Path
 from datetime import datetime, timedelta
 
-EVENT_DB = Path("/opt/otx-sec/db/events.db")
-INCIDENT_DB = Path("/opt/otx-sec/db/incidents.db")
+BASE_DIR = Path(os.environ.get("OTX_SEC_BASE_DIR", Path(__file__).resolve().parent))
+EVENT_DB = Path(os.environ.get("OTX_SEC_EVENTS_DB", BASE_DIR / "db" / "events.db"))
+INCIDENT_DB = Path(os.environ.get("OTX_SEC_INCIDENTS_DB", BASE_DIR / "db" / "incidents.db"))
 
 def connect_events():
     return sqlite3.connect(EVENT_DB)

@@ -1,15 +1,18 @@
 #!/usr/bin/env python3
 
+import os
 import json
 import time
 import psutil
 import ipaddress
 from datetime import datetime
+from pathlib import Path
 from OTXv2 import OTXv2, IndicatorTypes
 
 API_KEY = "dd070164c10914011a0717526f204287dc1f17b365121e6a3f3fac71cb84e635"
 
-REPORT = "/var/log/otx-sec/network_report.jsonl"
+BASE_DIR = Path(os.environ.get("OTX_SEC_BASE_DIR", Path(__file__).resolve().parent))
+REPORT = str(Path(os.environ.get("OTX_SEC_NETWORK_REPORT", BASE_DIR / "data" / "logs" / "network_report.jsonl")))
 
 SCAN_INTERVAL = 15
 
@@ -40,7 +43,7 @@ SUSPICIOUS_PATHS = [
     "/tmp",
     "/dev/shm",
     "/var/tmp",
-    "/home/anorial/.cache",
+    str(Path.home() / ".cache"),
 ]
 
 seen = set()

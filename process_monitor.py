@@ -1,11 +1,14 @@
 #!/usr/bin/env python3
 
+import os
 import json
 import time
 import psutil
 from datetime import datetime
+from pathlib import Path
 
-REPORT = "/var/log/otx-sec/process_report.jsonl"
+BASE_DIR = Path(os.environ.get("OTX_SEC_BASE_DIR", Path(__file__).resolve().parent))
+REPORT = str(Path(os.environ.get("OTX_SEC_PROCESS_REPORT", BASE_DIR / "data" / "logs" / "process_report.jsonl")))
 
 SUSPICIOUS_PATHS = [
     "/tmp",

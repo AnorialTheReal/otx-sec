@@ -4,6 +4,7 @@ import os
 import json
 import hashlib
 from datetime import datetime
+from pathlib import Path
 
 BASELINE_PATHS = [
     "/etc",
@@ -12,7 +13,8 @@ BASELINE_PATHS = [
     "/boot",
 ]
 
-DB_FILE = "/opt/otx-sec/db/system_hashes.json"
+BASE_DIR = Path(os.environ.get("OTX_SEC_BASE_DIR", Path(__file__).resolve().parent))
+DB_FILE = str(Path(os.environ.get("OTX_SEC_SYSTEM_HASHES", BASE_DIR / "db" / "system_hashes.json")))
 
 EXCLUDE_DIRS = {
     "/etc/ssl/certs",
