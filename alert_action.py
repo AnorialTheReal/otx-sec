@@ -1,45 +1,65 @@
-#!/opt/otx-sec/venv/bin/python
+#!/usr/bin/env python3
 
+import os
 import sys
 import subprocess
 from pathlib import Path
 
-APP_DIR = "/opt/otx-sec/app"
-sys.path.insert(0, APP_DIR)
+BASE_DIR = Path(os.environ.get("OTX_SEC_BASE_DIR", Path(__file__).resolve().parent))
+APP_DIR = Path(os.environ.get("OTX_SEC_APP_DIR", BASE_DIR / "app"))
+sys.path.insert(0, str(APP_DIR))
 
 import backend
 
 
 def notify(message):
-    subprocess.Popen([
-        "sudo", "-u", "anorial",
-        "env",
-        "DISPLAY=:0",
-        "DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/1000/bus",
+    cmd = [
         "notify-send",
         "OTX-Sec Alert",
-        message
-    ])
+        str(message)[:1000],
+    ]
+
+    env = os.environ.copy()
+    env.setdefault("DISPLAY", ":0")
+
+    try:
+        subprocess.Popen(
+            cmd,
+            env=env,
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+    except Exception:
+        print(f"[NOTIFY] {message}", flush=True)
 
 
 def choose_action(file_path):
     cmd = [
-        "sudo", "-u", "anorial",
-        "env",
-        "DISPLAY=:0",
-        "DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/1000/bus",
         "kdialog",
         "--menu",
         f"Suspicious file detected:\n{file_path}",
         "allow", "Allow",
         "block", "Block / Quarantine",
         "analyze", "Analyze",
-        "ignore", "Ignore"
+        "ignore", "Ignore",
     ]
 
+    env = os.environ.copy()
+    env.setdefault("DISPLAY", ":0")
+
     try:
-        result = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
-        return result.stdout.strip()
+        result = subprocess.run(
+            cmd,
+            env=env,
+            capture_output=True,
+            text=True,
+            timeout=60,
+        )
+        action = result.stdout.strip()
+        if action in {"allow", "block", "analyze", "ignore"}:
+            return action
+        return "ignore"
     except Exception:
         return "ignore"
 
@@ -49,7 +69,7 @@ def main():
         print("Usage: alert_action.py /path/to/file")
         return
 
-    file_path = sys.argv[1]
+    file_path = str(Path(sys.argv[1]).expanduser())
 
     if not Path(file_path).exists():
         print("File not found.")

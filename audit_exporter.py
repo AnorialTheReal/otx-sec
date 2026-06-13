@@ -1,11 +1,14 @@
 #!/opt/otx-sec/venv/bin/python
 
+import os
 import json
 import subprocess
 import time
 from datetime import datetime
+from pathlib import Path
 
-REPORT = "/var/log/otx-sec/audit_report.jsonl"
+BASE_DIR = Path(os.environ.get("OTX_SEC_BASE_DIR", Path(__file__).resolve().parent))
+REPORT = str(Path(os.environ.get("OTX_SEC_AUDIT_REPORT", BASE_DIR / "data" / "logs" / "audit_report.jsonl")))
 SEEN = set()
 
 KEYS = [
@@ -20,6 +23,7 @@ KEYS = [
 ]
 
 def write(entry):
+    Path(REPORT).parent.mkdir(parents=True, exist_ok=True)
     with open(REPORT, "a", encoding="utf-8") as f:
         f.write(json.dumps(entry, ensure_ascii=False) + "\n")
 
