@@ -8,7 +8,10 @@ import shutil
 import subprocess
 from pathlib import Path
 from datetime import datetime
-from OTXv2 import OTXv2, IndicatorTypes
+import sys
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from engines.threat_engine import ThreatEngine
 
 BASE_DIR = Path(os.environ.get("OTX_SEC_BASE_DIR", Path(__file__).resolve().parent))
 DATA_DIR = Path(os.environ.get("OTX_SEC_DATA_DIR", BASE_DIR / "data"))
@@ -172,18 +175,6 @@ def load_list(path):
         return []
 
 
-def get_otx_client():
-    settings = load_settings()
-    api_key = settings.get("otx_api_key", "").strip()
-
-    if not api_key:
-        return None
-
-    try:
-        return OTXv2(api_key)
-    except Exception:
-        return None
-
 
 def auto_quarantine_enabled():
     settings = load_settings()
@@ -272,35 +263,6 @@ def clam_scan(path):
         return False, f"clamav_error: {e}"
 
 
-def otx_check(file_hash):
-    otx = get_otx_client()
-
-    if not otx:
-        return -1, [], "OTX API key missing or invalid"
-
-    try:
-        data = otx.get_indicator_details_full(
-            IndicatorTypes.FILE_HASH_SHA256,
-            file_hash,
-        )
-
-        pulses = data.get("pulse_info", {}).get("pulses", [])
-
-        clean_pulses = []
-
-        for pulse in pulses[:10]:
-            clean_pulses.append({
-                "name": pulse.get("name"),
-                "id": pulse.get("id"),
-                "created": pulse.get("created"),
-                "tags": pulse.get("tags"),
-            })
-
-        return len(pulses), clean_pulses, None
-
-    except Exception as e:
-        return -1, [], str(e)
-
 
 def quarantine(path, file_hash):
     try:
@@ -384,15 +346,15 @@ def scan_file(path):
 
         clam_hit, clam_output = clam_scan(path)
 
-        otx_hits = 0
-        otx_pulses = []
-        otx_error = None
+        threat = ThreatEngine(load_settings()).lookup_hash(file_hash)
+
+        status = threat.get("verdict", "UNKNOWN")
+        score = int(threat.get("score", 0))
 
         if clam_hit:
             status = "MALICIOUS"
-        else:
-            otx_hits, otx_pulses, otx_error = otx_check(file_hash)
-            status = "MALICIOUS" if otx_hits > 0 else "CLEAN"
+            score = max(score, 90)
+            threat.setdefault("reasons", []).append("clamav_match")
 
         quarantine_path = None
         quarantine_error = None
@@ -407,16 +369,17 @@ def scan_file(path):
             "size": size,
             "clamav_hit": clam_hit,
             "clamav_output": clam_output,
-            "otx_hits": otx_hits,
-            "otx_error": otx_error,
-            "otx_pulses": otx_pulses,
+            "threat_score": score,
+            "threat_verdict": status,
+            "threat_reasons": threat.get("reasons", []),
+            "threat_providers": threat.get("providers", {}),
             "status": status,
             "quarantine_path": quarantine_path,
             "quarantine_error": quarantine_error,
             "recommendation": (
-                "QUARANTINE + VirusTotal prüfen"
+                "QUARANTINE + verify threat intelligence results"
                 if status == "MALICIOUS"
-                else "Keine bekannten Treffer"
+                else "Review if UNKNOWN/SUSPICIOUS. No known malicious result if CLEAN."
             ),
         }
 
