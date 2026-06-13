@@ -1336,6 +1336,31 @@ def classify(row):
 
     text = json.dumps(row).lower()
 
+    threat_verdict = str(row.get("threat_verdict", row.get("status", ""))).upper()
+    threat_score = 0
+
+    try:
+        threat_score = int(row.get("threat_score", row.get("risk_score", 0)) or 0)
+    except Exception:
+        threat_score = 0
+
+    static = row.get("static_analysis") or {}
+    static_score = 0
+
+    if isinstance(static, dict):
+        try:
+            static_score = int(static.get("risk_score", 0) or 0)
+        except Exception:
+            static_score = 0
+
+    max_score = max(threat_score, static_score)
+
+    if threat_verdict in {"MALICIOUS", "CRITICAL"}:
+        return "HIGH"
+
+    if max_score >= 80:
+        return "HIGH"
+
     if row.get("status") == "MALICIOUS" or "malicious" in text or "high_risk" in text or "blocked" in text:
         return "HIGH"
 
@@ -1345,8 +1370,17 @@ def classify(row):
     except Exception:
         pass
 
+    if threat_verdict in {"SUSPICIOUS", "UNKNOWN"}:
+        return "SUSPICIOUS"
+
+    if max_score >= 40:
+        return "SUSPICIOUS"
+
     if "suspicious" in text or "new_persistence" in text or "changed" in text or "auditd_event" in text:
         return "SUSPICIOUS"
+
+    if threat_verdict == "CLEAN":
+        return "CLEAN"
 
     if "clean" in text or "ok" in text or "allowed" in text:
         return "CLEAN"
