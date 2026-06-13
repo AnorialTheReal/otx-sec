@@ -1556,6 +1556,49 @@ def format_event_summary(event):
             for item in suspicious[:20]:
                 lines.append(f" - {item}")
 
+    yara_result = event.get("yara") or {}
+
+    if yara_result:
+        lines.append("")
+        lines.append("YARA Analysis")
+        lines.append("-------------------")
+
+        lines.append(
+            f"Available: {yara_result.get('available', False)}"
+        )
+
+        lines.append(
+            f"Risk Score: {yara_result.get('risk_score', 0)}"
+        )
+
+        if yara_result.get("error"):
+            lines.append(
+                f"Error: {yara_result.get('error')}"
+            )
+
+        matches = yara_result.get("matches", [])
+
+        if matches:
+            lines.append("Matches:")
+
+            for match in matches[:20]:
+                lines.append(
+                    f" - {match.get('rule', 'unknown')}"
+                )
+
+                meta = match.get("meta", {})
+
+                if meta.get("description"):
+                    lines.append(
+                        f"   Description: {meta.get('description')}"
+                    )
+
+                if meta.get("severity"):
+                    lines.append(
+                        f"   Severity: {meta.get('severity')}"
+                    )
+
+
     lines.append("")
     lines.append("Raw Event JSON")
     lines.append("--------------")
