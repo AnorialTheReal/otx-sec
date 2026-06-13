@@ -7,7 +7,12 @@ import psutil
 import ipaddress
 from datetime import datetime
 from pathlib import Path
-from OTXv2 import OTXv2, IndicatorTypes
+import sys
+
+BASE_DIR = Path(os.environ.get("OTX_SEC_BASE_DIR", Path(__file__).resolve().parent.parent))
+sys.path.insert(0, str(BASE_DIR))
+
+from engines.threat_engine import ThreatEngine
 
 CONFIG_FILE = Path(os.environ.get("OTX_SEC_CONFIG_FILE", BASE_DIR / "config" / "settings.json"))
 
@@ -19,18 +24,6 @@ def load_settings():
     except Exception:
         return {}
 
-
-def get_otx_client():
-    api_key = str(load_settings().get("otx_api_key", "")).strip()
-    if not api_key:
-        return None
-    try:
-        return OTXv2(api_key)
-    except Exception:
-        return None
-
-
-BASE_DIR = Path(os.environ.get("OTX_SEC_BASE_DIR", Path(__file__).resolve().parent))
 REPORT = str(Path(os.environ.get("OTX_SEC_NETWORK_REPORT", BASE_DIR / "data" / "logs" / "network_report.jsonl")))
 
 SCAN_INTERVAL = 15
@@ -96,33 +89,6 @@ def is_suspicious_path(path):
     return False
 
 
-def otx_ip_check(ip):
-    otx = get_otx_client()
-    if not otx:
-        return -1, [], "OTX API key missing or invalid"
-
-    try:
-        data = otx.get_indicator_details_full(
-            IndicatorTypes.IPv4,
-            ip,
-        )
-
-        pulses = data.get("pulse_info", {}).get("pulses", [])
-
-        clean_pulses = []
-        for pulse in pulses[:10]:
-            clean_pulses.append({
-                "name": pulse.get("name"),
-                "id": pulse.get("id"),
-                "created": pulse.get("created"),
-                "tags": pulse.get("tags"),
-            })
-
-        return len(pulses), clean_pulses, None
-
-    except Exception as e:
-        return -1, [], str(e)
-
 
 def risk_score(proc_name, proc_exe, user, remote_port, status):
     score = 0
@@ -151,8 +117,8 @@ def risk_score(proc_name, proc_exe, user, remote_port, status):
     return score, reasons
 
 
-def should_report(score, reasons, otx_hits):
-    if otx_hits > 0:
+def should_report(score, reasons, threat_score):
+    if threat_score >= 40:
         return True
 
     if score >= 30:
@@ -206,24 +172,26 @@ def scan_connections():
                 conn.status,
             )
 
-            otx_hits = 0
-            otx_pulses = []
-            otx_error = None
+            threat = {"score": 0, "verdict": "UNKNOWN", "reasons": [], "providers": {}}
 
             if score >= 30:
-                otx_hits, otx_pulses, otx_error = otx_ip_check(remote_ip)
+                threat = ThreatEngine(load_settings()).lookup_ip(remote_ip)
 
-            if not should_report(score, reasons, otx_hits):
+            threat_score = int(threat.get("score", 0))
+            combined_score = min(100, score + threat_score)
+            combined_reasons = list(reasons) + list(threat.get("reasons", []))
+
+            if not should_report(score, combined_reasons, threat_score):
                 seen.add(key)
                 continue
 
             seen.add(key)
 
-            if otx_hits > 0:
+            if threat.get("verdict") == "MALICIOUS" or threat_score >= 80:
                 verdict = "MALICIOUS_IP"
-            elif score >= 60:
+            elif combined_score >= 60:
                 verdict = "HIGH_RISK_CONNECTION"
-            elif score >= 30:
+            elif combined_score >= 30:
                 verdict = "SUSPICIOUS_CONNECTION"
             else:
                 verdict = "INFO"
@@ -232,8 +200,12 @@ def scan_connections():
                 "time": now(),
                 "event": "NETWORK_CONNECTION",
                 "verdict": verdict,
-                "risk_score": score,
-                "risk_reasons": reasons,
+                "risk_score": combined_score,
+                "risk_reasons": combined_reasons,
+                "local_risk_score": score,
+                "threat_score": threat_score,
+                "threat_verdict": threat.get("verdict"),
+                "threat_providers": threat.get("providers", {}),
                 "pid": conn.pid,
                 "process": proc_name,
                 "exe": proc_exe,
@@ -242,9 +214,7 @@ def scan_connections():
                 "remote_ip": remote_ip,
                 "remote_port": remote_port,
                 "status": conn.status,
-                "otx_hits": otx_hits,
-                "otx_error": otx_error,
-                "otx_pulses": otx_pulses,
+                "threat_reasons": threat.get("reasons", []),
                 "recommendation": (
                     "Wenn unbekannt: Prozess prüfen, Hash berechnen, Datei quarantänen, IP manuell bei OTX/VirusTotal prüfen."
                 ),
