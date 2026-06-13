@@ -16,3 +16,19 @@ db/*.json
 
 config/settings.json
 config/*key*
+
+# Python caches
+__pycache__/
+*.py[cod]
+
+# Local databases and baselines
+db/*.db
+db/*.json
+
+# Local rule lists
+config/allow_ips.json
+config/allow_processes.json
+config/allowlist.json
+config/block_ips.json
+config/block_processes.json
+config/blocklist.json
