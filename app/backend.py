@@ -2,12 +2,18 @@ import os, json, shutil, hashlib, subprocess
 from pathlib import Path
 from datetime import datetime
 
-LOG_DIR = Path("/var/log/otx-sec")
-QUARANTINE_DIR = Path("/var/quarantine/otx-sec")
-CONFIG_DIR = Path("/opt/otx-sec/config")
+# Safe path handling:
+# - Installed/root mode may use /var and /opt later.
+# - Dev/user mode must never require root just to open the GUI.
+BASE_DIR = Path(os.environ.get("OTX_SEC_BASE_DIR", Path(__file__).resolve().parent.parent))
+DATA_DIR = Path(os.environ.get("OTX_SEC_DATA_DIR", BASE_DIR / "data"))
+
+LOG_DIR = Path(os.environ.get("OTX_SEC_LOG_DIR", DATA_DIR / "logs"))
+QUARANTINE_DIR = Path(os.environ.get("OTX_SEC_QUARANTINE_DIR", DATA_DIR / "quarantine"))
+CONFIG_DIR = Path(os.environ.get("OTX_SEC_CONFIG_DIR", BASE_DIR / "config"))
 CONFIG_FILE = CONFIG_DIR / "settings.json"
-EXPORT_DIR = Path("/opt/otx-sec/exports")
-ANALYSIS_DIR = Path("/opt/otx-sec/analysis")
+EXPORT_DIR = Path(os.environ.get("OTX_SEC_EXPORT_DIR", BASE_DIR / "exports"))
+ANALYSIS_DIR = Path(os.environ.get("OTX_SEC_ANALYSIS_DIR", BASE_DIR / "analysis"))
 
 ALLOWLIST = CONFIG_DIR / "allowlist.json"
 BLOCKLIST = CONFIG_DIR / "blocklist.json"
