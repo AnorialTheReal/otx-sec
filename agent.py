@@ -90,19 +90,75 @@ def now():
 
 
 def load_settings():
+    default = {
+        "otx_api_key": "",
+        "auto_quarantine": True,
+        "watch_paths": WATCH_PATHS,
+        "exclude_dirs": list(EXCLUDE_DIRS),
+        "skip_extensions": list(SKIP_EXTENSIONS),
+        "max_file_size_mb": MAX_FILE_SIZE // (1024 * 1024),
+        "scan_interval": SCAN_INTERVAL,
+    }
+
     if not CONFIG_FILE.exists():
-        return {
-            "otx_api_key": "",
-            "auto_quarantine": True,
-        }
+        return default
 
     try:
-        return json.loads(CONFIG_FILE.read_text())
+        data = json.loads(CONFIG_FILE.read_text())
+        if not isinstance(data, dict):
+            return default
+        for k, v in default.items():
+            data.setdefault(k, v)
+        return data
     except Exception:
-        return {
-            "otx_api_key": "",
-            "auto_quarantine": True,
-        }
+        return default
+
+
+def expand_path(value):
+    return os.path.abspath(os.path.expanduser(str(value)))
+
+
+def runtime_watch_paths():
+    settings = load_settings()
+    paths = settings.get("watch_paths", WATCH_PATHS)
+    if not isinstance(paths, list):
+        paths = WATCH_PATHS
+    return [expand_path(p) for p in paths]
+
+
+def runtime_exclude_dirs():
+    settings = load_settings()
+    dirs = settings.get("exclude_dirs", list(EXCLUDE_DIRS))
+    if not isinstance(dirs, list):
+        dirs = list(EXCLUDE_DIRS)
+    return {expand_path(p) for p in dirs}
+
+
+def runtime_skip_extensions():
+    settings = load_settings()
+    exts = settings.get("skip_extensions", list(SKIP_EXTENSIONS))
+    if not isinstance(exts, list):
+        exts = list(SKIP_EXTENSIONS)
+    return {str(e).lower() for e in exts if str(e).startswith(".")}
+
+
+def runtime_max_file_size():
+    settings = load_settings()
+    try:
+        mb = int(settings.get("max_file_size_mb", MAX_FILE_SIZE // (1024 * 1024)))
+        mb = max(1, min(mb, 2048))
+        return mb * 1024 * 1024
+    except Exception:
+        return MAX_FILE_SIZE
+
+
+def runtime_scan_interval():
+    settings = load_settings()
+    try:
+        sec = int(settings.get("scan_interval", SCAN_INTERVAL))
+        return max(30, min(sec, 86400))
+    except Exception:
+        return SCAN_INTERVAL
 
 
 def load_list(path):
@@ -159,8 +215,8 @@ def notify(title, message):
 def is_excluded(path):
     path = os.path.abspath(path)
 
-    for excluded in EXCLUDE_DIRS:
-        if path == excluded or path.startswith(excluded + "/"):
+    for excluded in runtime_exclude_dirs():
+        if path == excluded or path.startswith(excluded + os.sep):
             return True
 
     return False
@@ -178,11 +234,11 @@ def should_skip_file(path):
 
     ext = os.path.splitext(path)[1].lower()
 
-    if ext in SKIP_EXTENSIONS:
+    if ext in runtime_skip_extensions():
         return True
 
     try:
-        if os.path.getsize(path) > MAX_FILE_SIZE:
+        if os.path.getsize(path) > runtime_max_file_size():
             return True
     except Exception:
         return True
@@ -389,7 +445,7 @@ def scan_file(path):
 def collect_files():
     files = []
 
-    for base in WATCH_PATHS:
+    for base in runtime_watch_paths():
         if not os.path.exists(base):
             continue
 
@@ -424,8 +480,9 @@ def full_scan():
 def main():
     while True:
         full_scan()
-        print(f"[*] Sleeping {SCAN_INTERVAL}s", flush=True)
-        time.sleep(SCAN_INTERVAL)
+        interval = runtime_scan_interval()
+        print(f"[*] Sleeping {interval}s", flush=True)
+        time.sleep(interval)
 
 
 if __name__ == "__main__":
