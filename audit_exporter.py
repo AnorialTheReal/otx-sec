@@ -56,7 +56,7 @@ def main():
                 "event": "AUDITD_EVENT",
                 "key": key,
                 "raw": out[-8000:],
-                "recommendation": "Systemänderung prüfen. Wenn unbekannt: Datei/Service/Benutzeränderung analysieren."
+                "recommendation": "System Change Checking. If Unknown: Datei/Service/Userchange analyse."
             })
 
             print(f"[AUDIT] {key}", flush=True)

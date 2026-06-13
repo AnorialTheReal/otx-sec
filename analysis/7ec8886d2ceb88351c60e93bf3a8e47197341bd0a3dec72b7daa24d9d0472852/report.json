@@ -1,0 +1,9 @@
+{
+  "time": "2026-06-13T01:26:12.329931",
+  "path": "/etc/systemd/system/otx-incident-engine.service",
+  "sha256": "7ec8886d2ceb88351c60e93bf3a8e47197341bd0a3dec72b7daa24d9d0472852",
+  "md5": "12dcd80e31d8ba433bb8754e4e49bfdf",
+  "size": 272,
+  "file": "/etc/systemd/system/otx-incident-engine.service: ASCII text",
+  "ls": "-rw-r--r-- 1 root root 272 13. Jun 01:18 /etc/systemd/system/otx-incident-engine.service"
+}

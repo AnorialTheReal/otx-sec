@@ -21,6 +21,7 @@ class App(QMainWindow):
         self.events = []
         self.visible_events = []
         self.threat_rows = []
+        self.incident_rows = []
         self.process_rows = []
         self.network_rows = []
         self.current_filter = "ALL"
@@ -68,35 +69,44 @@ class App(QMainWindow):
 
         self.tab_events = QWidget()
         self.tab_threats = QWidget()
+        self.tab_incidents = QWidget()
         self.tab_processes = QWidget()
         self.tab_network = QWidget()
+        self.tab_intel = QWidget()
         self.tab_manual = QWidget()
         self.tab_action = QWidget()
         self.tab_quarantine = QWidget()
         self.tab_services = QWidget()
         self.tab_settings = QWidget()
+        self.tab_lists = QWidget()
         self.tab_recs = QWidget()
 
         self.tabs.addTab(self.tab_events, "Security Events")
         self.tabs.addTab(self.tab_threats, "Threat Center")
+        self.tabs.addTab(self.tab_incidents, "Incidents")
         self.tabs.addTab(self.tab_processes, "Process Analyzer")
         self.tabs.addTab(self.tab_network, "Network Analyzer")
+        self.tabs.addTab(self.tab_intel, "Threat Intelligence")
         self.tabs.addTab(self.tab_manual, "Manual Scan")
         self.tabs.addTab(self.tab_action, "Action Center")
         self.tabs.addTab(self.tab_quarantine, "Quarantine")
         self.tabs.addTab(self.tab_services, "Services")
         self.tabs.addTab(self.tab_settings, "Settings")
+        self.tabs.addTab(self.tab_lists, "Allow / Block Lists")
         self.tabs.addTab(self.tab_recs, "Recommendations")
 
         self.setup_events()
         self.setup_threat_center()
+        self.setup_incidents()
         self.setup_processes()
         self.setup_network()
+        self.setup_intel()
         self.setup_manual()
         self.setup_action()
         self.setup_quarantine()
         self.setup_services()
         self.setup_settings()
+        self.setup_lists()
         self.setup_recs()
 
         self.setCentralWidget(root)
@@ -220,6 +230,113 @@ class App(QMainWindow):
         self.threat_details.setReadOnly(True)
         layout.addWidget(self.threat_details, 2)
 
+    def setup_incidents(self):
+        layout = QVBoxLayout(self.tab_incidents)
+
+        top = QHBoxLayout()
+
+        refresh_btn = QPushButton("Refresh Incidents")
+        refresh_btn.clicked.connect(self.populate_incidents)
+
+        self.incident_search = QLineEdit()
+        self.incident_search.setPlaceholderText("Search incidents, object, severity, reasons...")
+        self.incident_search.textChanged.connect(self.populate_incidents)
+
+        top.addWidget(self.incident_search)
+        top.addWidget(refresh_btn)
+        layout.addLayout(top)
+
+        self.incident_table = QTableWidget()
+        self.incident_table.setColumnCount(7)
+        self.incident_table.setHorizontalHeaderLabels(
+            ["ID", "Severity", "Score", "Status", "Created", "Title", "Object"]
+        )
+        self.incident_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        self.incident_table.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.incident_table.customContextMenuRequested.connect(self.incident_menu)
+        self.incident_table.cellClicked.connect(self.show_incident)
+        layout.addWidget(self.incident_table, 4)
+
+        self.incident_details = QTextEdit()
+        self.incident_details.setReadOnly(True)
+        layout.addWidget(self.incident_details, 2)
+
+    def populate_incidents(self):
+        query = self.incident_search.text().lower()
+        rows = backend.list_incidents()
+
+        if rows and "error" in rows[0]:
+            self.incident_details.setPlainText(rows[0]["error"])
+            return
+
+        filtered = []
+        for incident in rows:
+            raw = json.dumps(incident).lower()
+            if query and query not in raw:
+                continue
+            filtered.append(incident)
+
+        self.incident_rows = filtered
+        self.incident_table.setRowCount(len(filtered))
+
+        for row, incident in enumerate(filtered):
+            values = [
+                incident.get("id", ""),
+                incident.get("severity", ""),
+                incident.get("score", ""),
+                incident.get("status", ""),
+                incident.get("created", ""),
+                incident.get("title", ""),
+                incident.get("object", ""),
+            ]
+
+            for col, value in enumerate(values):
+                self.incident_table.setItem(row, col, QTableWidgetItem(str(value)))
+
+    def show_incident(self, row, col):
+        if row < len(self.incident_rows):
+            self.incident_details.setPlainText(
+                json.dumps(self.incident_rows[row], indent=2, ensure_ascii=False)
+            )
+
+
+    def incident_menu(self, pos):
+        row = self.incident_table.currentRow()
+
+        if row < 0 or row >= len(self.incident_rows):
+            return
+
+        incident = self.incident_rows[row]
+        incident_id = incident.get("id")
+        obj = str(incident.get("object", ""))
+
+        menu = QMenu()
+
+        def ip_from_obj(value):
+            if value.startswith("ip:"):
+                return value.split("ip:", 1)[1].strip()
+            return value.strip()
+
+        actions = [
+            ("Show Details", lambda: self.incident_details.setPlainText(json.dumps(incident, indent=2, ensure_ascii=False))),
+            ("Close Incident", lambda: QMessageBox.information(self, "Incident", backend.close_incident(incident_id))),
+            ("Reopen Incident", lambda: QMessageBox.information(self, "Incident", backend.reopen_incident(incident_id))),
+            ("Copy Object", lambda: QApplication.clipboard().setText(obj)),
+            ("Analyze Object If File", lambda: QMessageBox.information(self, "Analyze", backend.analyze_path(obj))),
+            ("Block Object If File", lambda: QMessageBox.information(self, "Block", backend.block_path(obj))),
+            ("Hash Intel If File", lambda: QMessageBox.information(self, "Threat Intel", backend.intel_lookup_hash(backend.sha256(obj)) if backend.is_real_file(obj) else "Object is not a file.")),
+            ("IP Intel If IP", lambda: QMessageBox.information(self, "IP Threat Intel", backend.intel_lookup_ip(ip_from_obj(obj)))),
+            ("Block IP If IP", lambda: QMessageBox.information(self, "Firewall", backend.firewall_block_ip(ip_from_obj(obj)))),
+            ("Unblock IP If IP", lambda: QMessageBox.information(self, "Firewall", backend.firewall_unblock_ip(ip_from_obj(obj)))),
+        ]
+
+        for label, function in actions:
+            action = QAction(label, self)
+            action.triggered.connect(function)
+            menu.addAction(action)
+
+        menu.exec(self.incident_table.viewport().mapToGlobal(pos))
+        self.refresh()
     def setup_processes(self):
         layout = QVBoxLayout(self.tab_processes)
 
@@ -283,6 +400,44 @@ class App(QMainWindow):
         self.network_details = QTextEdit()
         self.network_details.setReadOnly(True)
         layout.addWidget(self.network_details, 2)
+
+    def setup_intel(self):
+        layout = QVBoxLayout(self.tab_intel)
+
+        hash_row = QHBoxLayout()
+        self.intel_hash_input = QLineEdit()
+        self.intel_hash_input.setPlaceholderText("SHA256 / MD5 hash lookup")
+
+        hash_btn = QPushButton("Lookup Hash")
+        hash_btn.clicked.connect(self.lookup_intel_hash)
+
+        hash_row.addWidget(self.intel_hash_input)
+        hash_row.addWidget(hash_btn)
+        layout.addLayout(hash_row)
+
+        ip_row = QHBoxLayout()
+        self.intel_ip_input = QLineEdit()
+        self.intel_ip_input.setPlaceholderText("IP lookup")
+
+        ip_btn = QPushButton("Lookup IP")
+        ip_btn.clicked.connect(self.lookup_intel_ip)
+
+        ip_row.addWidget(self.intel_ip_input)
+        ip_row.addWidget(ip_btn)
+        layout.addLayout(ip_row)
+
+        self.intel_output = QTextEdit()
+        self.intel_output.setReadOnly(True)
+        layout.addWidget(self.intel_output)
+
+    def lookup_intel_hash(self):
+        value = self.intel_hash_input.text().strip()
+        self.intel_output.setPlainText(backend.intel_lookup_hash(value))
+
+    def lookup_intel_ip(self):
+        value = self.intel_ip_input.text().strip()
+        self.intel_output.setPlainText(backend.intel_lookup_ip(value))
+
 
     def setup_manual(self):
         layout = QVBoxLayout(self.tab_manual)
@@ -378,19 +533,134 @@ class App(QMainWindow):
 
         self.otx = QLineEdit(settings.get("otx_api_key", ""))
         self.vt = QLineEdit(settings.get("virustotal_api_key", ""))
-        self.autoq = QLineEdit(str(settings.get("auto_quarantine", True)))
+        self.abuseipdb = QLineEdit(settings.get("abuseipdb_api_key", ""))
+        self.greynoise = QLineEdit(settings.get("greynoise_api_key", ""))
+        self.shodan = QLineEdit(settings.get("shodan_api_key", ""))
+        self.malwarebazaar = QLineEdit(settings.get("malwarebazaar_api_key", ""))
+        self.ipinfo = QLineEdit(settings.get("ipinfo_api_key", ""))
 
-        for label, widget in [
-            ("OTX API Key", self.otx),
-            ("VirusTotal API Key", self.vt),
-            ("Auto Quarantine true/false", self.autoq),
+        for field in [
+            self.otx,
+            self.vt,
+            self.abuseipdb,
+            self.greynoise,
+            self.shodan,
+            self.malwarebazaar,
+            self.ipinfo,
         ]:
+            field.setEchoMode(QLineEdit.Password)
+
+        self.urlhaus_enabled = QLineEdit(str(settings.get("urlhaus_enabled", True)))
+        self.autoq = QLineEdit(str(settings.get("auto_quarantine", True)))
+        self.auto_otx = QLineEdit(str(settings.get("auto_otx_lookup", True)))
+        self.auto_vt = QLineEdit(str(settings.get("auto_vt_lookup", False)))
+
+        fields = [
+            ("AlienVault OTX API Key", self.otx),
+            ("VirusTotal API Key", self.vt),
+            ("AbuseIPDB API Key", self.abuseipdb),
+            ("GreyNoise API Key", self.greynoise),
+            ("Shodan API Key", self.shodan),
+            ("MalwareBazaar API Key optional", self.malwarebazaar),
+            ("IPinfo API Key optional", self.ipinfo),
+            ("URLHaus enabled true/false", self.urlhaus_enabled),
+            ("Auto Quarantine true/false", self.autoq),
+            ("Auto OTX Lookup true/false", self.auto_otx),
+            ("Auto VirusTotal Lookup true/false", self.auto_vt),
+        ]
+
+        for label, widget in fields:
             layout.addWidget(QLabel(label))
             layout.addWidget(widget)
 
-        button = QPushButton("Save Settings")
+        button = QPushButton("Save API Keys / Settings")
         button.clicked.connect(self.save_settings)
         layout.addWidget(button)
+
+
+    def setup_lists(self):
+        layout = QVBoxLayout(self.tab_lists)
+
+        top = QHBoxLayout()
+
+        self.rule_type = QComboBox()
+        self.rule_type.addItems([
+            "allow_hash",
+            "block_hash",
+            "allow_ip",
+            "block_ip",
+            "allow_process",
+            "block_process",
+        ])
+
+        self.rule_value = QLineEdit()
+        self.rule_value.setPlaceholderText("Hash, IP, process name, or executable path")
+
+        add_btn = QPushButton("Add Rule")
+        add_btn.clicked.connect(self.add_rule_gui)
+
+        remove_btn = QPushButton("Remove Selected")
+        remove_btn.clicked.connect(self.remove_rule_gui)
+
+        refresh_btn = QPushButton("Refresh")
+        refresh_btn.clicked.connect(self.populate_rules)
+
+        top.addWidget(self.rule_type)
+        top.addWidget(self.rule_value)
+        top.addWidget(add_btn)
+        top.addWidget(remove_btn)
+        top.addWidget(refresh_btn)
+
+        layout.addLayout(top)
+
+        self.rules_table = QTableWidget()
+        self.rules_table.setColumnCount(2)
+        self.rules_table.setHorizontalHeaderLabels(["Type", "Value"])
+        self.rules_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        layout.addWidget(self.rules_table)
+
+        info = QLabel("Whitelist keeps logs but marks matching IP/process/hash as CLEAN. Blocklist marks matching IP/process/hash as HIGH.")
+        layout.addWidget(info)
+
+        self.populate_rules()
+
+    def populate_rules(self):
+        rules = backend.list_rules()
+        rows = []
+
+        for rule_type, values in rules.items():
+            for value in values:
+                rows.append((rule_type, value))
+
+        self.rules_table.setRowCount(len(rows))
+
+        for row, (rule_type, value) in enumerate(rows):
+            self.rules_table.setItem(row, 0, QTableWidgetItem(str(rule_type)))
+            self.rules_table.setItem(row, 1, QTableWidgetItem(str(value)))
+
+    def add_rule_gui(self):
+        rule_type = self.rule_type.currentText()
+        value = self.rule_value.text().strip()
+
+        QMessageBox.information(self, "Rule", backend.add_rule(rule_type, value))
+        self.rule_value.clear()
+        self.populate_rules()
+        self.refresh()
+
+    def remove_rule_gui(self):
+        row = self.rules_table.currentRow()
+
+        if row < 0:
+            QMessageBox.information(self, "Rule", "No rule selected.")
+            return
+
+        rule_type = self.rules_table.item(row, 0).text()
+        value = self.rules_table.item(row, 1).text()
+
+        QMessageBox.information(self, "Rule", backend.remove_rule(rule_type, value))
+        self.populate_rules()
+        self.refresh()
+
 
     def setup_recs(self):
         layout = QVBoxLayout(self.tab_recs)
@@ -416,6 +686,7 @@ class App(QMainWindow):
         self.events = backend.all_events()
         self.populate_events()
         self.populate_quarantine()
+        self.populate_incidents()
         self.populate_services()
         self.populate_processes()
         self.populate_network()
@@ -590,6 +861,7 @@ class App(QMainWindow):
             ("Analyze File", lambda: QMessageBox.information(self, "Analyze", backend.analyze_path(real_path))),
             ("Investigate", lambda: QMessageBox.information(self, "Investigate", backend.investigate_path(real_path))),
             ("Hash", lambda: QMessageBox.information(self, "Hash", backend.hash_file(real_path))),
+            ("VirusTotal / MalwareBazaar Lookup", lambda: QMessageBox.information(self, "Threat Intel", backend.virustotal_file_lookup(real_path))),
             ("Quarantine", lambda: QMessageBox.information(self, "Quarantine", backend.quarantine_path(real_path))),
             ("Open Folder", lambda: subprocess.Popen(["xdg-open", real_path.rsplit("/", 1)[0] if real_path and real_path.startswith("/") else "/var/log/otx-sec"])),
             ("Copy Object", lambda: QApplication.clipboard().setText(str(obj))),
@@ -642,6 +914,7 @@ class App(QMainWindow):
             ("Show Details", lambda: self.process_details.setPlainText(json.dumps(process, indent=2, ensure_ascii=False))),
             ("Kill Process", lambda: QMessageBox.information(self, "Kill", backend.kill_process(pid))),
             ("Hash Binary", lambda: QMessageBox.information(self, "Hash", backend.hash_file(exe))),
+            ("VirusTotal / MalwareBazaar Binary Lookup", lambda: QMessageBox.information(self, "Threat Intel", backend.virustotal_file_lookup(exe))),
             ("Analyze Binary", lambda: QMessageBox.information(self, "Analyze", backend.analyze_path(exe))),
             ("Quarantine Binary", lambda: QMessageBox.information(self, "Quarantine", backend.quarantine_path(exe))),
             ("Show Connections", lambda: QMessageBox.information(self, "Connections", backend.process_connections(pid))),
@@ -673,6 +946,13 @@ class App(QMainWindow):
         actions = [
             ("Show Details", lambda: self.network_details.setPlainText(json.dumps(connection, indent=2, ensure_ascii=False))),
             ("Copy IP", lambda: QApplication.clipboard().setText(ip)),
+            ("Whitelist IP", lambda: QMessageBox.information(self, "Allowlist", backend.add_rule("allow_ip", ip))),
+            ("Blocklist IP", lambda: QMessageBox.information(self, "Blocklist", backend.add_rule("block_ip", ip))),
+            ("Whitelist Process", lambda: QMessageBox.information(self, "Allowlist", backend.add_rule("allow_process", exe))),
+            ("Blocklist Process", lambda: QMessageBox.information(self, "Blocklist", backend.add_rule("block_process", exe))),
+            ("Block IP", lambda: QMessageBox.information(self, "Firewall", backend.firewall_block_ip(ip))),
+            ("Unblock IP", lambda: QMessageBox.information(self, "Firewall", backend.firewall_unblock_ip(ip))),
+            ("IP Threat Intel Lookup", lambda: QMessageBox.information(self, "IP Threat Intel", backend.intel_lookup_ip(ip))),
             ("Copy Process Path", lambda: QApplication.clipboard().setText(exe)),
             ("Show Process Connections", lambda: QMessageBox.information(self, "Connections", backend.process_connections(pid))),
             ("Hash Process Binary", lambda: QMessageBox.information(self, "Hash", backend.hash_file(exe))),
@@ -709,6 +989,7 @@ class App(QMainWindow):
 
         actions = [
             ("Hash", lambda: QMessageBox.information(self, "Hash", backend.hash_file(path))),
+            ("VirusTotal / MalwareBazaar Lookup", lambda: QMessageBox.information(self, "Threat Intel", backend.virustotal_file_lookup(path))),
             ("Analyze", lambda: QMessageBox.information(self, "Analyze", backend.analyze_path(path))),
             ("Restore", lambda: QMessageBox.information(self, "Restore", backend.restore_quarantine_file(path))),
             ("Delete", lambda: QMessageBox.information(self, "Delete", backend.delete_quarantine_file(path))),
@@ -813,14 +1094,24 @@ class App(QMainWindow):
         self.refresh()
 
     def save_settings(self):
+        def b(value):
+            return value.strip().lower() in ["1", "true", "yes", "on"]
+
         backend.save_settings({
-            "otx_api_key": self.otx.text().strip(),
-            "virustotal_api_key": self.vt.text().strip(),
-            "auto_quarantine": self.autoq.text().strip().lower()
-            in ["1", "true", "yes", "on"],
+            "otx_api_key": self.otx.text(),
+            "virustotal_api_key": self.vt.text(),
+            "abuseipdb_api_key": self.abuseipdb.text(),
+            "greynoise_api_key": self.greynoise.text(),
+            "shodan_api_key": self.shodan.text(),
+            "malwarebazaar_api_key": self.malwarebazaar.text(),
+            "ipinfo_api_key": self.ipinfo.text(),
+            "urlhaus_enabled": b(self.urlhaus_enabled.text()),
+            "auto_quarantine": b(self.autoq.text()),
+            "auto_otx_lookup": b(self.auto_otx.text()),
+            "auto_vt_lookup": b(self.auto_vt.text()),
         })
 
-        QMessageBox.information(self, "Settings", "Saved.")
+        QMessageBox.information(self, "Settings", "API keys saved securely.")
 
 
 def main():

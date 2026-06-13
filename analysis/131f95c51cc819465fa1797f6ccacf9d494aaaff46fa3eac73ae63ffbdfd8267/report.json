@@ -1,0 +1,9 @@
+{
+  "time": "2026-06-13T00:31:52.007309",
+  "path": "/var/quarantine/otx-sec/131f95c51cc819465fa1797f6ccacf9d494aaaff46fa3eac73ae63ffbdfd8267_131f95c51cc819465fa1797f6ccacf9d494aaaff46fa3eac73ae63ffbdfd8267_eicar-otx-test.txt",
+  "sha256": "131f95c51cc819465fa1797f6ccacf9d494aaaff46fa3eac73ae63ffbdfd8267",
+  "md5": "69630e4574ec6798239b091cda43dca0",
+  "size": 69,
+  "file": "/var/quarantine/otx-sec/131f95c51cc819465fa1797f6ccacf9d494aaaff46fa3eac73ae63ffbdfd8267_131f95c51cc819465fa1797f6ccacf9d494aaaff46fa3eac73ae63ffbdfd8267_eicar-otx-test.txt: EICAR virus test files",
+  "ls": "---------- 1 root root 69 12. Jun 20:07 /var/quarantine/otx-sec/131f95c51cc819465fa1797f6ccacf9d494aaaff46fa3eac73ae63ffbdfd8267_131f95c51cc819465fa1797f6ccacf9d494aaaff46fa3eac73ae63ffbdfd8267_eicar-otx-test.txt"
+}
