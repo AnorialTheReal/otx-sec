@@ -1,188 +1,207 @@
-# OTX-Sec
+# README.md
 
-**Open-Source Antivirus & Threat Intelligence Platform**
+# OTX-Sec
+License: AGPL-3.0-only
+
+Open-Source Antivirus & Threat Intelligence Platform
 
 Created by **Anorial**
 
-OTX-Sec is a community-driven Open-Source Antivirus and Threat Intelligence Platform designed to combine traditional malware detection with modern threat intelligence sources.
+OTX-Sec is an open-source antivirus and threat intelligence platform focused on Linux systems.
 
-The goal of OTX-Sec is to become a transparent, privacy-respecting, community-powered security solution that can help users detect malware, suspicious behavior, persistence mechanisms, malicious network connections, and emerging threats.
+The goal of OTX-Sec is to combine traditional malware detection techniques with modern threat intelligence from multiple providers including:
 
-Unlike many commercial antivirus products, OTX-Sec is built around openness, auditability, and user control.
+* AlienVault OTX
+* VirusTotal
+* MalwareBazaar
+* URLHaus
+
+OTX-Sec is designed to be transparent, privacy-respecting and community-driven.
+
+This project is licensed under the GNU Affero General Public License v3 (AGPLv3) and is intended to remain open source permanently.
 
 ---
 
-# Mission
+# Current Status
 
-Most antivirus products are proprietary and operate as black boxes.
+Version:
 
-OTX-Sec aims to change that by providing:
+0.1.0-alpha
 
-* Fully Open Source Security Software
-* Community Driven Development
-* Transparent Detection Logic
-* Threat Intelligence Integration
-* Cross-Platform Support
-* Privacy First Design
-* No Hidden Telemetry
-* No Vendor Lock-In
+State:
 
-OTX-Sec will remain Open Source forever.
+Early Alpha
+
+OTX-Sec is already capable of:
+
+* Monitoring files
+* Monitoring processes
+* Monitoring network activity
+* Performing threat intelligence lookups
+* Running static analysis
+* Running optional YARA scans
+* Generating incidents
+* Displaying findings through a graphical interface
+
+The software is still experimental and should not be used as the only security solution protecting production systems.
 
 ---
 
 # Features
 
-## Malware Detection
-
-* ClamAV Integration
-* SHA256 Hash Analysis
-* File Reputation Checks
-* Automatic Quarantine
-* Threat Intelligence Correlation
-
 ## Threat Intelligence
 
-Integrated support for:
+Supported Providers:
 
 * AlienVault OTX
 * VirusTotal
 * MalwareBazaar
-* AbuseIPDB
-* GreyNoise
-* Shodan
-* IPInfo
 * URLHaus
 
-## Process Monitoring
+Supported Indicators:
 
-* Suspicious Process Detection
-* Detection of Executables Running From:
+* SHA256 hashes
+* IP addresses
+* Domains
+* URLs
 
-  * /tmp
-  * /dev/shm
-  * /var/tmp
-* Process Risk Analysis
+---
 
-## Network Monitoring
+## Detection
 
-* Suspicious Connection Detection
-* Threat Intelligence IP Lookups
+Current Detection Methods:
+
+* ClamAV integration
+* SHA256 hashing
+* Threat intelligence lookups
+* Static file analysis
+* Entropy analysis
+* Suspicious string detection
+* Optional YARA scanning
+
+---
+
+## Monitoring
+
+Available Monitors:
+
+* File Scan Agent
+* Process Monitor
+* Network Monitor
+* Persistence Monitor
+* Integrity Checker
+* Audit Exporter
+
+---
+
+## Incident Handling
+
+* Event Collection
+* Incident Engine
 * Risk Scoring
-* Public IP Analysis
-* Malicious Infrastructure Detection
+* Human Readable Summaries
+* JSON Export
+* Quarantine Support
 
-## Persistence Monitoring
+---
 
-Detection of:
+## Graphical Interface
 
-* Autostart Entries
-* Systemd Services
-* Scheduled Tasks
-* Login Persistence
-* Suspicious Startup Locations
+OTX-Sec currently includes:
 
-## Integrity Monitoring
-
-* File Integrity Monitoring
-* Baseline Generation
-* Change Detection
-* System File Verification
-
-## Incident Management
-
-* Event Correlation
-* Incident Generation
-* Risk Scoring
-* Alerting
-* Incident Tracking
-
-## User Interface
-
-* Qt Desktop GUI
-* Dashboard
-* Service Monitoring
+* Event Overview
 * Incident Overview
-* Configuration Management
-* Threat Analysis
+* Threat Intelligence Settings
+* Process Monitoring View
+* Network Monitoring View
+* Static Analysis Results
+* YARA Results
 
 ---
 
-# Project Status
+# Project Structure
 
-Current Status:
+```text
+otx-sec/
+├── app/
+├── config/
+├── db/
+├── docs/
+├── engines/
+├── integrations/
+├── monitors/
+├── packaging/
+├── rules/
+├── tests/
+├── tools/
+└── exports/
+```
 
-**Alpha Development**
+Directory Overview:
 
-Development Hours:
+app/
 
-**38+ Hours**
+* GUI
+* Backend bridge
 
-The project is under active development.
+engines/
 
-Features, architecture and integrations may change until the first stable release.
+* Threat engine
+* Risk engine
+* Incident engine
+* Static analysis engine
+* YARA engine
 
----
+integrations/
 
-# Supported Platforms
+* OTX
+* VirusTotal
+* MalwareBazaar
+* URLHaus
 
-Current Focus:
+monitors/
 
-* Arch Linux
-* Garuda Linux
-* Debian
-* Ubuntu
-* Fedora
+* Network monitor
+* Process monitor
+* Persistence monitor
+* Audit monitor
 
-Planned:
+tools/
 
-* Windows
-* macOS
-* BSD
-
----
-
-# Technology Stack
-
-Current:
-
-* Python
-* PySide6 (Qt)
-* SQLite
-* Systemd
-* ClamAV
-
-Future:
-
-* Rust
-* C++
-* C#
-* Go
-
-Performance-critical components may be rewritten in Rust or C++ for better speed and memory efficiency.
+* Agent
+* Baseline generation
+* Integrity checking
+* Database writing
+* Log importing
 
 ---
 
 # Installation
 
-Clone Repository:
+Clone repository:
 
 ```bash
 git clone https://github.com/AnorialTheReal/otx-sec.git
 cd otx-sec
 ```
 
-Create Virtual Environment:
+Create virtual environment:
 
 ```bash
 python -m venv venv
 source venv/bin/activate
 ```
 
-Install Dependencies:
+Install requirements:
 
 ```bash
 pip install -r requirements.txt
+```
+
+Copy configuration:
+
+```bash
+cp config/settings.example.json config/settings.json
 ```
 
 Start GUI:
@@ -193,122 +212,77 @@ python app/frontend.py
 
 ---
 
-# Configuration
+# Threat Engine CLI
 
-Copy the example configuration:
+Hash Lookup:
 
 ```bash
-cp config/settings.example.json config/settings.json
+python -m engines.threat_engine hash <sha256>
 ```
 
-Edit your configuration:
+IP Lookup:
 
-```json
-{
-  "otx_api_key": "",
-  "virustotal_api_key": "",
-  "abuseipdb_api_key": "",
-  "greynoise_api_key": "",
-  "shodan_api_key": "",
-  "malwarebazaar_api_key": "",
-  "ipinfo_api_key": "",
-  "auto_quarantine": true
-}
+```bash
+python -m engines.threat_engine ip 8.8.8.8
 ```
 
-All integrations are optional.
+Domain Lookup:
 
-OTX-Sec can operate without external APIs.
+```bash
+python -m engines.threat_engine domain example.com
+```
+
+URL Lookup:
+
+```bash
+python -m engines.threat_engine url http://example.com/
+```
 
 ---
 
-# Security Philosophy
+# Static Analysis
+
+Example:
+
+```bash
+python -m engines.static_analysis /bin/ls
+```
+
+Features:
+
+* File Type Detection
+* Entropy Calculation
+* Packed Binary Detection
+* Suspicious String Detection
+
+---
+
+# YARA
+
+YARA support is optional.
+
+Example:
+
+```bash
+python -m engines.yara_engine /bin/ls
+```
+
+If yara-python is not installed, OTX-Sec continues working without crashing.
+
+---
+
+# Security Principles
 
 OTX-Sec follows these principles:
 
 * Open Source First
 * User Control
-* Privacy First
-* No Mandatory Cloud Services
+* Local First
 * No Hidden Telemetry
-* Community Auditable Code
+* No Hardcoded API Keys
+* No Hardcoded Usernames
+* Transparent Detection Logic
 * Defensive Security Only
-
-Users should always know exactly what the software is doing.
-
----
-
-# Roadmap
-
-## Version 0.1
-
-* Core Scanner
-* Quarantine
-* Dashboard
-* OTX Integration
-* Incident Engine
-
-## Version 0.2
-
-* VirusTotal Integration
-* MalwareBazaar Integration
-* Rule Management
-* Better Reporting
-
-## Version 0.3
-
-* Advanced Network Analysis
-* Behavioral Detection
-* YARA Integration
-* Threat Hunting Features
-
-## Version 0.5
-
-* Cross Platform Improvements
-* Automatic Updates
-* Signature Management
-
-## Version 1.0
-
-* Stable Release
-* Plugin System
-* Enterprise Features
-* Community Threat Feed
-
----
-
-# Contributing
-
-Everyone is welcome to contribute.
-
-Ways to help:
-
-* Report Bugs
-* Create Pull Requests
-* Improve Documentation
-* Add Threat Intelligence Integrations
-* Write Tests
-* Improve Detection Logic
-* Suggest Features
-* Review Code
-
-Every contribution matters.
-
----
-
-# Contributors
-
-## Founder
-
-Anorial
-
-## Development Hours
-
-Please add your name and contributed hours below:
-
-| Contributor | Hours |
-| ----------- | ----- |
-| Anorial     | 38+   |
 
 ---
 
@@ -316,44 +290,46 @@ Please add your name and contributed hours below:
 
 GNU Affero General Public License v3.0 (AGPLv3)
 
-This project is licensed under AGPLv3.
+The project will remain open source.
 
-Any modifications, hosted services, or public deployments based on OTX-Sec must also remain open source under the same license.
+All modified hosted versions must also provide source code according to the AGPLv3 license.
 
-See the LICENSE file for details.
+---
+
+# Contributing
+
+Everyone is welcome.
+
+You can contribute by:
+
+* Testing
+* Reporting bugs
+* Improving documentation
+* Writing YARA rules
+* Improving threat intelligence integrations
+* Writing Rust modules
+* Writing C/C++ modules
+* Writing Go modules
+* Reviewing code
+
+---
+
+# Development Hours
+
+| Contributor | Hours |
+| ----------- | ----- |
+| Anorial     | 53    |
+
+Add your name and hours when contributing.
 
 ---
 
 # Disclaimer
 
-OTX-Sec is provided as-is without warranty.
+OTX-Sec is experimental software.
 
-This software is intended for:
+False positives and false negatives are possible.
 
-* Defensive Security
-* Malware Detection
-* Threat Monitoring
-* Incident Response
-* Security Research
-
-Always verify detections before taking action on production systems.
-
-False positives can occur.
-
----
-
-# Community
-
-If you like the project:
-
-* Star the repository
-* Report bugs
-* Contribute code
-* Share ideas
-* Help improve detections
-
-Together we can build a transparent and powerful Open-Source security platform.
-
----
+Always verify detections before deleting or quarantining files.
 
 **Made with passion by Anorial.**
