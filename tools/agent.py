@@ -12,6 +12,7 @@ import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from engines.threat_engine import ThreatEngine
+from engines.static_analysis import analyze_file
 
 BASE_DIR = Path(os.environ.get("OTX_SEC_BASE_DIR", Path(__file__).resolve().parent))
 DATA_DIR = Path(os.environ.get("OTX_SEC_DATA_DIR", BASE_DIR / "data"))
@@ -347,9 +348,16 @@ def scan_file(path):
         clam_hit, clam_output = clam_scan(path)
 
         threat = ThreatEngine(load_settings()).lookup_hash(file_hash)
+        static = analyze_file(path)
 
         status = threat.get("verdict", "UNKNOWN")
-        score = int(threat.get("score", 0))
+        score = max(
+            int(threat.get("score", 0)),
+            int(static.get("risk_score", 0)),
+        )
+
+        if static.get("risk_score", 0) >= 50 and status == "CLEAN":
+            status = "SUSPICIOUS"
 
         if clam_hit:
             status = "MALICIOUS"
@@ -373,6 +381,7 @@ def scan_file(path):
             "threat_verdict": status,
             "threat_reasons": threat.get("reasons", []),
             "threat_providers": threat.get("providers", {}),
+            "static_analysis": static,
             "status": status,
             "quarantine_path": quarantine_path,
             "quarantine_error": quarantine_error,
