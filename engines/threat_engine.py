@@ -1,5 +1,6 @@
 from integrations.otx import OTXProvider
 from integrations.malwarebazaar import MalwareBazaarProvider
+from integrations.virustotal import VirusTotalProvider
 
 
 class ThreatEngine:
@@ -7,8 +8,9 @@ class ThreatEngine:
         self.settings = settings or {}
         self.otx = OTXProvider(self.settings.get("otx_api_key", ""))
         self.malwarebazaar = MalwareBazaarProvider()
+        self.virustotal = VirusTotalProvider(self.settings.get("virustotal_api_key", ""))
 
-    def score_hash_result(self, otx_result, mb_result):
+    def score_hash_result(self, otx_result, mb_result, vt_result):
         score = 0
         reasons = []
 
@@ -20,11 +22,22 @@ class ThreatEngine:
             score += 70
             reasons.append("malwarebazaar_match")
 
+        if vt_result.get("malicious", 0) > 0:
+            score += min(70, 20 + vt_result.get("malicious", 0) * 5)
+            reasons.append("virustotal_malicious_match")
+
+        elif vt_result.get("suspicious", 0) > 0:
+            score += 25
+            reasons.append("virustotal_suspicious_match")
+
         if otx_result.get("error"):
             reasons.append("otx_unavailable_or_error")
 
         if mb_result.get("error") or mb_result.get("hits") == -1:
             reasons.append("malwarebazaar_unavailable_or_error")
+
+        if vt_result.get("error") or vt_result.get("hits") == -1:
+            reasons.append("virustotal_unavailable_or_error")
 
         score = min(score, 100)
 
@@ -42,8 +55,9 @@ class ThreatEngine:
     def lookup_hash(self, sha256: str):
         otx_result = self.otx.hash_lookup(sha256)
         mb_result = self.malwarebazaar.hash_lookup(sha256)
+        vt_result = self.virustotal.hash_lookup(sha256)
 
-        score, verdict, reasons = self.score_hash_result(otx_result, mb_result)
+        score, verdict, reasons = self.score_hash_result(otx_result, mb_result, vt_result)
 
         return {
             "type": "hash",
@@ -54,6 +68,7 @@ class ThreatEngine:
             "providers": {
                 "otx": otx_result,
                 "malwarebazaar": mb_result,
+                "virustotal": vt_result,
             },
         }
 
