@@ -1,13 +1,16 @@
-#!/opt/otx-sec/venv/bin/python
+#!/usr/bin/env python3
 
+import os
 import json
 import sqlite3
 import subprocess
 import time
 from pathlib import Path
 
-DB = "/opt/otx-sec/db/incidents.db"
-STATE = Path("/opt/otx-sec/db/alerted_incidents.json")
+BASE_DIR = Path(os.environ.get("OTX_SEC_BASE_DIR", Path(__file__).resolve().parent))
+DB = str(Path(os.environ.get("OTX_SEC_DB", BASE_DIR / "db" / "incidents.db")))
+STATE = Path(os.environ.get("OTX_SEC_ALERT_STATE", BASE_DIR / "data" / "alerted_incidents.json"))
+
 
 def load_seen():
     try:
@@ -15,20 +18,38 @@ def load_seen():
     except Exception:
         return set()
 
+
 def save_seen(seen):
+    STATE.parent.mkdir(parents=True, exist_ok=True)
     STATE.write_text(json.dumps(sorted(list(seen)), indent=2))
 
+
 def notify(title, msg):
-    subprocess.Popen([
-        "sudo", "-u", "anorial",
-        "env",
-        "DISPLAY=:0",
-        "DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/1000/bus",
+    """
+    Send desktop notification without hardcoded sudo/user.
+    Safe fallback: print alert if notify-send/session bus is unavailable.
+    """
+    cmd = [
         "notify-send",
         "-u", "critical",
-        title,
-        msg
-    ])
+        str(title)[:120],
+        str(msg)[:1000],
+    ]
+
+    env = os.environ.copy()
+    env.setdefault("DISPLAY", ":0")
+
+    try:
+        subprocess.Popen(
+            cmd,
+            env=env,
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+    except Exception:
+        print(f"[NOTIFY] {title}: {msg}", flush=True)
+
 
 def get_incidents():
     con = sqlite3.connect(DB)
@@ -43,6 +64,7 @@ def get_incidents():
     rows = cur.fetchall()
     con.close()
     return rows
+
 
 def main():
     print("[*] Incident alert service started", flush=True)
@@ -63,7 +85,7 @@ def main():
 
                 notify(
                     f"OTX-Sec {sev} Incident",
-                    f"Score: {score}/100\nObject: {obj}\n{reasons_text}"
+                    f"Score: {score}/100\nObject: {obj}\n{reasons_text}",
                 )
 
                 print(f"[ALERT] {sev} {score}/100 {obj}", flush=True)
@@ -74,6 +96,7 @@ def main():
             print(f"[ERROR] {e}", flush=True)
 
         time.sleep(15)
+
 
 if __name__ == "__main__":
     main()
