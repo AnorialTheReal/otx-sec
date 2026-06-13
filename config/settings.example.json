@@ -1,0 +1,18 @@
+{
+  "otx_api_key": "",
+  "virustotal_api_key": "",
+  "abuseipdb_api_key": "",
+  "greynoise_api_key": "",
+  "shodan_api_key": "",
+  "malwarebazaar_api_key": "",
+  "ipinfo_api_key": "",
+  "urlhaus_enabled": true,
+  "auto_quarantine": true,
+  "auto_otx_lookup": true,
+  "auto_vt_lookup": false,
+  "watch_paths": ["~", "/etc", "/usr/local/bin"],
+  "exclude_dirs": ["~/.cache", "/proc", "/sys", "/dev", "/run"],
+  "skip_extensions": [".log", ".tmp", ".db"],
+  "max_file_size_mb": 50,
+  "scan_interval": 300
+}
