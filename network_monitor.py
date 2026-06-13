@@ -9,7 +9,26 @@ from datetime import datetime
 from pathlib import Path
 from OTXv2 import OTXv2, IndicatorTypes
 
-API_KEY = "dd070164c10914011a0717526f204287dc1f17b365121e6a3f3fac71cb84e635"
+CONFIG_FILE = Path(os.environ.get("OTX_SEC_CONFIG_FILE", BASE_DIR / "config" / "settings.json"))
+
+
+def load_settings():
+    try:
+        data = json.loads(CONFIG_FILE.read_text())
+        return data if isinstance(data, dict) else {}
+    except Exception:
+        return {}
+
+
+def get_otx_client():
+    api_key = str(load_settings().get("otx_api_key", "")).strip()
+    if not api_key:
+        return None
+    try:
+        return OTXv2(api_key)
+    except Exception:
+        return None
+
 
 BASE_DIR = Path(os.environ.get("OTX_SEC_BASE_DIR", Path(__file__).resolve().parent))
 REPORT = str(Path(os.environ.get("OTX_SEC_NETWORK_REPORT", BASE_DIR / "data" / "logs" / "network_report.jsonl")))
@@ -47,7 +66,6 @@ SUSPICIOUS_PATHS = [
 ]
 
 seen = set()
-otx = OTXv2(API_KEY)
 
 
 def now():
@@ -79,6 +97,10 @@ def is_suspicious_path(path):
 
 
 def otx_ip_check(ip):
+    otx = get_otx_client()
+    if not otx:
+        return -1, [], "OTX API key missing or invalid"
+
     try:
         data = otx.get_indicator_details_full(
             IndicatorTypes.IPv4,
