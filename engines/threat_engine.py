@@ -178,3 +178,54 @@ class ThreatEngine:
                 "urlhaus": urlhaus_result,
             },
         }
+
+
+def _load_settings():
+    import json
+    import os
+    from pathlib import Path
+
+    base_dir = Path(os.environ.get("OTX_SEC_BASE_DIR", Path(__file__).resolve().parent.parent))
+    config_file = Path(os.environ.get("OTX_SEC_CONFIG_FILE", base_dir / "config" / "settings.json"))
+
+    try:
+        data = json.loads(config_file.read_text())
+        return data if isinstance(data, dict) else {}
+    except Exception:
+        return {}
+
+
+def main():
+    import json
+    import sys
+
+    if len(sys.argv) < 3:
+        print("Usage:")
+        print("  python -m engines.threat_engine hash <sha256>")
+        print("  python -m engines.threat_engine ip <ip>")
+        print("  python -m engines.threat_engine domain <domain>")
+        print("  python -m engines.threat_engine url <url>")
+        raise SystemExit(1)
+
+    kind = sys.argv[1].lower()
+    value = sys.argv[2]
+
+    engine = ThreatEngine(_load_settings())
+
+    if kind == "hash":
+        result = engine.lookup_hash(value)
+    elif kind == "ip":
+        result = engine.lookup_ip(value)
+    elif kind == "domain":
+        result = engine.lookup_domain(value)
+    elif kind == "url":
+        result = engine.lookup_url(value)
+    else:
+        print(f"Unknown lookup type: {kind}")
+        raise SystemExit(1)
+
+    print(json.dumps(result, indent=2, ensure_ascii=False))
+
+
+if __name__ == "__main__":
+    main()
