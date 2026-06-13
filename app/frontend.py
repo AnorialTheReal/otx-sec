@@ -1,4 +1,4 @@
-#!/opt/otx-sec/venv/bin/python
+#!/usr/bin/env python3
 
 import sys
 import json
@@ -863,7 +863,7 @@ class App(QMainWindow):
             ("Hash", lambda: QMessageBox.information(self, "Hash", backend.hash_file(real_path))),
             ("VirusTotal / MalwareBazaar Lookup", lambda: QMessageBox.information(self, "Threat Intel", backend.virustotal_file_lookup(real_path))),
             ("Quarantine", lambda: QMessageBox.information(self, "Quarantine", backend.quarantine_path(real_path))),
-            ("Open Folder", lambda: subprocess.Popen(["xdg-open", real_path.rsplit("/", 1)[0] if real_path and real_path.startswith("/") else "/var/log/otx-sec"])),
+            ("Open Folder", lambda: subprocess.Popen(["xdg-open", real_path.rsplit("/", 1)[0] if real_path and real_path.startswith("/") else str(backend.LOG_DIR)])),
             ("Copy Object", lambda: QApplication.clipboard().setText(str(obj))),
         ]
 
