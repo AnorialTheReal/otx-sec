@@ -24,6 +24,8 @@ def scan_file(path: str, rule_dir: str | None = None) -> dict:
         "matches": [],
         "error": None,
         "risk_score": 0,
+        "match_count": 0,
+        "highest_severity": "none",
     }
 
     try:
@@ -92,6 +94,26 @@ def scan_file(path: str, rule_dir: str | None = None) -> dict:
             score += severity_scores.get(severity, 30)
 
         result["risk_score"] = min(100, score)
+        result["match_count"] = len(result["matches"])
+
+        severity_rank = {
+            "none": 0,
+            "low": 1,
+            "medium": 2,
+            "high": 3,
+            "critical": 4,
+        }
+
+        highest = "none"
+
+        for match in result["matches"]:
+            meta = match.get("meta", {}) or {}
+            severity = str(meta.get("severity", "medium")).lower()
+
+            if severity_rank.get(severity, 2) > severity_rank.get(highest, 0):
+                highest = severity
+
+        result["highest_severity"] = highest
 
     return result
 
