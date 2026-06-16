@@ -1594,6 +1594,12 @@ def format_event_summary(event):
         lines.append(
             f"Risk Score: {yara_result.get('risk_score', 0)}"
         )
+        lines.append(
+            f"Match Count: {yara_result.get('match_count', len(yara_result.get('matches', [])))}"
+        )
+        lines.append(
+            f"Highest Severity: {str(yara_result.get('highest_severity', 'none')).upper()}"
+        )
 
         if yara_result.get("error"):
             lines.append(
