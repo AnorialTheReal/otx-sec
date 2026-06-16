@@ -16,6 +16,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from engines.threat_engine import ThreatEngine
 from engines.yara_engine import scan_file as yara_scan_file
 from engines.static_analysis import analyze_file
+from tools.secrets import merge_settings_with_secrets
 
 BASE_DIR = Path(os.environ.get("OTX_SEC_BASE_DIR", Path(__file__).resolve().parent))
 DATA_DIR = Path(os.environ.get("OTX_SEC_DATA_DIR", BASE_DIR / "data"))
@@ -117,7 +118,7 @@ def load_settings():
     }
 
     if not CONFIG_FILE.exists():
-        return default
+        return merge_settings_with_secrets(default)
 
     try:
         data = json.loads(CONFIG_FILE.read_text())
@@ -125,9 +126,9 @@ def load_settings():
             return default
         for k, v in default.items():
             data.setdefault(k, v)
-        return data
+        return merge_settings_with_secrets(data)
     except Exception:
-        return default
+        return merge_settings_with_secrets(default)
 
 
 def expand_path(value):
@@ -410,6 +411,31 @@ def quarantine(path, file_hash):
 def write_report(entry):
     with open(REPORT_FILE, "a", encoding="utf-8") as f:
         f.write(json.dumps(entry, ensure_ascii=False) + "\n")
+
+
+def load_scan_cache():
+    try:
+        if SCAN_CACHE_FILE.exists():
+            return json.loads(SCAN_CACHE_FILE.read_text())
+    except Exception:
+        pass
+    return {}
+
+
+def save_scan_cache(cache):
+    try:
+        SCAN_CACHE_DIR.mkdir(parents=True, exist_ok=True)
+        SCAN_CACHE_FILE.write_text(json.dumps(cache, indent=2, ensure_ascii=False))
+    except Exception:
+        pass
+
+
+def file_cache_key(path, file_hash, size):
+    try:
+        stat = Path(path).stat()
+        return f"{file_hash}:{size}:{int(stat.st_mtime)}"
+    except Exception:
+        return f"{file_hash}:{size}:unknown"
 
 
 def scan_file(path):
