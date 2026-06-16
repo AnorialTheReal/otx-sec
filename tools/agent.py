@@ -250,6 +250,20 @@ def sha256(path):
 
 
 
+
+def load_hash_list(name):
+    path = BASE_DIR / "tools" / "config" / name
+    try:
+        data = json.loads(path.read_text())
+        if isinstance(data, list):
+            return set(str(x).lower() for x in data)
+        if isinstance(data, dict):
+            return set(str(x).lower() for x in data.get("hashes", []))
+    except Exception:
+        pass
+    return set()
+
+
 def otx_native_scan(path):
     reasons = []
     score = 0
@@ -389,8 +403,20 @@ def scan_file(path):
 
         native_hit, native_output, native_score, native_reasons = otx_native_scan(path)
 
+        allowlist = load_hash_list("allowlist.json")
+        blocklist = load_hash_list("blocklist.json")
+
+        if file_hash.lower() in allowlist:
+            print(f"[ALLOWLIST] {path}", flush=True)
+            return
+
         threat = ThreatEngine(load_settings()).lookup_hash(file_hash)
         static = analyze_file(path)
+
+        if file_hash.lower() in blocklist:
+            threat["score"] = max(threat.get("score", 0), 100)
+            threat["verdict"] = "MALICIOUS"
+            threat.setdefault("reasons", []).append("blocklist_hash_match")
 
         # YARA is optional. If yara-python is missing, the engine returns an error
         # but the agent continues scanning without crashing.
