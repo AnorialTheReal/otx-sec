@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import os
+import argparse
 import json
 import time
 import hashlib
@@ -585,11 +586,21 @@ def full_scan():
 
 
 def main():
-    while True:
+    parser = argparse.ArgumentParser(description="OTXv2 security agent")
+    parser.add_argument("--scan", help="Scan exactly one file and exit")
+    parser.add_argument("--full-scan", action="store_true", help="Scan all configured paths")
+    args = parser.parse_args()
+
+    if args.scan:
+        scan_file(args.scan)
+        return
+
+    if args.full_scan:
         full_scan()
-        interval = runtime_scan_interval()
-        print(f"[*] Sleeping {interval}s", flush=True)
-        time.sleep(interval)
+        return
+
+    # Default behavior for service/daemon mode.
+    full_scan()
 
 
 if __name__ == "__main__":
