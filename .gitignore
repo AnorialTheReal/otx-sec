@@ -32,3 +32,4 @@ config/allowlist.json
 config/block_ips.json
 config/block_processes.json
 config/blocklist.json
+tools/cache/
