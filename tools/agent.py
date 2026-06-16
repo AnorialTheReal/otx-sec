@@ -9,7 +9,7 @@ import math
 import shutil
 import subprocess
 from pathlib import Path
-from datetime import datetime
+from datetime import datetime, timezone
 import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
@@ -93,6 +93,11 @@ MAX_FILE_SIZE = 50 * 1024 * 1024
 
 QUARANTINE_DIR = str(Path(os.environ.get("OTX_SEC_QUARANTINE_DIR", DATA_DIR / "quarantine")))
 REPORT_FILE = str(Path(os.environ.get("OTX_SEC_REPORT_FILE", DATA_DIR / "logs" / "report.jsonl")))
+
+# Local scan cache.
+# Stores completed scan results for unchanged files.
+SCAN_CACHE_DIR = Path(os.environ.get("OTX_SEC_SCAN_CACHE_DIR", DATA_DIR / "cache"))
+SCAN_CACHE_FILE = SCAN_CACHE_DIR / "file_scan_cache.json"
 SCAN_INTERVAL = int(os.environ.get("OTX_SEC_SCAN_INTERVAL", "300"))
 
 os.makedirs(QUARANTINE_DIR, exist_ok=True)
@@ -426,8 +431,8 @@ def save_scan_cache(cache):
     try:
         SCAN_CACHE_DIR.mkdir(parents=True, exist_ok=True)
         SCAN_CACHE_FILE.write_text(json.dumps(cache, indent=2, ensure_ascii=False))
-    except Exception:
-        pass
+    except Exception as e:
+        print(f"[CACHE_ERROR] {e}", flush=True)
 
 
 def file_cache_key(path, file_hash, size):
@@ -445,6 +450,20 @@ def scan_file(path):
     try:
         size = os.path.getsize(path)
         file_hash = sha256(path)
+
+        # Load previous scan results.
+        # If the file hash, size and modification time did not change,
+        # reuse the previous result and skip expensive analysis.
+        scan_cache = load_scan_cache()
+        cache_key = file_cache_key(path, file_hash, size)
+        cached_entry = scan_cache.get(cache_key)
+
+        if cached_entry:
+            cached_entry["cache_hit"] = True
+            cached_entry["time"] = datetime.now(timezone.utc).isoformat()
+            write_report(cached_entry)
+            print(f"[CACHE] {path}", flush=True)
+            return
 
         allowlist = load_list(ALLOWLIST)
         blocklist = load_list(BLOCKLIST)
@@ -563,6 +582,12 @@ def scan_file(path):
                 else "Review if UNKNOWN/SUSPICIOUS. No known malicious result if CLEAN."
             ),
         }
+
+        # Store the completed scan result.
+        # Future scans can reuse this result if the file remains unchanged.
+        scan_cache[cache_key] = dict(entry)
+        scan_cache[cache_key]["cache_hit"] = False
+        save_scan_cache(scan_cache)
 
         write_report(entry)
 
