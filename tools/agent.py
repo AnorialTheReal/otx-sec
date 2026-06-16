@@ -4,6 +4,7 @@ import os
 import json
 import time
 import hashlib
+import math
 import shutil
 import subprocess
 from pathlib import Path
@@ -50,7 +51,6 @@ EXCLUDE_DIRS = {
     str(Path.home() / ".mozilla"),
     str(Path.home() / ".steam"),
     str(Path.home() / ".local" / "share" / "Steam"),
-    "/var/lib/clamav",
     "/var/quarantine",
     str(BASE_DIR / "venv"),
 }
@@ -249,21 +249,62 @@ def sha256(path):
     return h.hexdigest()
 
 
-def clam_scan(path):
+
+def otx_native_scan(path):
+    reasons = []
+    score = 0
+
     try:
-        result = subprocess.run(
-            ["clamscan", "--no-summary", path],
-            capture_output=True,
-            text=True,
-            timeout=60,
-        )
-
-        output = (result.stdout + result.stderr).strip()
-        return "FOUND" in output, output
-
+        data = Path(path).read_bytes()
     except Exception as e:
-        return False, f"clamav_error: {e}"
+        return False, f"native_error: {e}", 0, ["read_error"]
 
+    size = len(data)
+    if size == 0:
+        return False, "CLEAN_NATIVE", 0, ["empty_file"]
+
+    freq = {}
+    for b in data:
+        freq[b] = freq.get(b, 0) + 1
+
+    entropy = -sum((c / size) * math.log2(c / size) for c in freq.values())
+
+    if entropy >= 7.4:
+        score += 30
+        reasons.append("high_entropy")
+
+    lowered = data.lower()
+    markers = [
+        b"/bin/sh", b"chmod +x", b"curl ", b"wget ",
+        b"base64", b"eval(", b"exec(", b"system(",
+        b"crontab", b"systemctl enable", b"ld_preload",
+        b"reverse shell", b"cmd.exe", b"powershell",
+        b"virtualalloc", b"createremotethread", b"writeprocessmemory",
+    ]
+
+    for marker in markers:
+        if marker in lowered:
+            score += 12
+            reasons.append("native_marker:" + marker.decode(errors="ignore"))
+
+    if data.startswith(b"\x7fELF"):
+        reasons.append("elf_binary")
+        if entropy >= 7.0:
+            score += 15
+            reasons.append("packed_like_elf")
+
+    if data.startswith(b"MZ"):
+        reasons.append("pe_binary")
+        if entropy >= 7.0:
+            score += 15
+            reasons.append("packed_like_pe")
+
+    if score >= 70:
+        return True, "MALICIOUS_NATIVE", score, reasons
+    if score >= 40:
+        return True, "SUSPICIOUS_NATIVE", score, reasons
+
+    return False, "CLEAN_NATIVE", score, reasons
 
 
 def quarantine(path, file_hash):
@@ -346,7 +387,7 @@ def scan_file(path):
             print(f"[BLOCK] {path}", flush=True)
             return
 
-        clam_hit, clam_output = clam_scan(path)
+        native_hit, native_output, native_score, native_reasons = otx_native_scan(path)
 
         threat = ThreatEngine(load_settings()).lookup_hash(file_hash)
         static = analyze_file(path)
@@ -365,10 +406,11 @@ def scan_file(path):
         if static.get("risk_score", 0) >= 50 and status == "CLEAN":
             status = "SUSPICIOUS"
 
-        if clam_hit:
-            status = "MALICIOUS"
-            score = max(score, 90)
-            threat.setdefault("reasons", []).append("clamav_match")
+        if native_hit:
+            status = "MALICIOUS" if native_score >= 70 else "SUSPICIOUS"
+            score = max(score, native_score)
+            threat.setdefault("reasons", []).append("otx_native_match")
+            threat.setdefault("reasons", []).extend(native_reasons)
 
         quarantine_path = None
         quarantine_error = None
@@ -381,8 +423,11 @@ def scan_file(path):
             "file": path,
             "sha256": file_hash,
             "size": size,
-            "clamav_hit": clam_hit,
-            "clamav_output": clam_output,
+            "engine": "otx-native",
+            "native_hit": native_hit,
+            "native_output": native_output,
+            "native_score": native_score,
+            "native_reasons": native_reasons,
             "threat_score": score,
             "threat_verdict": status,
             "threat_reasons": threat.get("reasons", []),

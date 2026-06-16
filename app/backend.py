@@ -24,8 +24,6 @@ SERVICES = [
     "otx-network-monitor",
     "otx-persistence-monitor",
     "otx-audit-exporter",
-    "clamav-daemon",
-    "clamav-freshclam",
     "auditd",
 ]
 
@@ -339,12 +337,12 @@ def analyze_path(path):
 def manual_scan_file(path):
     if not Path(path).exists():
         return "File not found."
-    return run_cmd(["clamscan", "--no-summary", path], 180)
+    return analyze_path(path)
 
 def manual_scan_folder(path):
     if not Path(path).exists():
         return "Folder not found."
-    return run_cmd(["clamscan", "-r", "--infected", path], 900)
+    return analyze_path(path)
 
 def make_summary():
     events = all_events()
