@@ -283,8 +283,11 @@ def otx_native_scan(path):
 
     entropy = -sum((c / size) * math.log2(c / size) for c in freq.values())
 
-    if entropy >= 7.4:
-        score += 30
+    if entropy >= 7.8:
+        score += 40
+        reasons.append("very_high_entropy")
+    elif entropy >= 7.2:
+        score += 25
         reasons.append("high_entropy")
 
     lowered = data.lower()
@@ -312,6 +315,34 @@ def otx_native_scan(path):
         if entropy >= 7.0:
             score += 15
             reasons.append("packed_like_pe")
+
+    file_path = Path(path)
+    suffix = file_path.suffix.lower()
+
+    suspicious_exts = {
+        ".sh", ".py", ".pl", ".rb", ".php", ".js",
+        ".exe", ".dll", ".scr", ".bat", ".cmd", ".ps1"
+    }
+
+    if suffix in suspicious_exts:
+        score += 8
+        reasons.append("suspicious_extension:" + suffix)
+
+    if file_path.name.startswith(".") and suffix in suspicious_exts:
+        score += 10
+        reasons.append("hidden_executable_like_file")
+
+    try:
+        mode = file_path.stat().st_mode
+        if mode & 0o111:
+            score += 8
+            reasons.append("executable_permission")
+    except Exception:
+        pass
+
+    if data.startswith(b"#!"):
+        score += 8
+        reasons.append("script_shebang")
 
     if score >= 70:
         return True, "MALICIOUS_NATIVE", score, reasons
