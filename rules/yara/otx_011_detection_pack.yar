@@ -2,7 +2,7 @@ rule OTX_Base64_Execution_Linux
 {
     meta:
         description = "Detects Linux base64 decode and execution behavior"
-        author = "Anorial"
+        author = "OTX-Sec"
         engine = "otx-native-yara"
         version = "0.1.1-alpha"
         severity = "high"
@@ -23,7 +23,7 @@ rule OTX_Linux_Persistence_Cron
 {
     meta:
         description = "Detects Linux cron based persistence indicators"
-        author = "Anorial"
+        author = "OTX-Sec"
         engine = "otx-native-yara"
         version = "0.1.1-alpha"
         severity = "medium"
@@ -44,7 +44,7 @@ rule OTX_Linux_Reverse_Shell
 {
     meta:
         description = "Detects Linux reverse shell indicators"
-        author = "Anorial"
+        author = "OTX-Sec"
         engine = "otx-native-yara"
         version = "0.1.1-alpha"
         severity = "high"
@@ -65,7 +65,7 @@ rule OTX_LD_PRELOAD_Hijack
 {
     meta:
         description = "Detects LD_PRELOAD hijacking indicators"
-        author = "Anorial"
+        author = "OTX-Sec"
         engine = "otx-native-yara"
         version = "0.1.1-alpha"
         severity = "high"
@@ -84,7 +84,7 @@ rule OTX_Suspicious_Linux_Downloader
 {
     meta:
         description = "Detects suspicious Linux downloader behavior"
-        author = "Anorial"
+        author = "OTX-Sec"
         engine = "otx-native-yara"
         version = "0.1.1-alpha"
         severity = "medium"

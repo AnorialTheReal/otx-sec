@@ -2,7 +2,7 @@ rule OTX_Suspicious_Shell_Loader
 {
     meta:
         description = "Detects suspicious shell loader patterns"
-        author = "Philipp Prautzsch / OTXv2"
+        author = "OTX-Sec"
         engine = "otx-native-yara"
         version = "0.1.1-alpha"
 
@@ -22,7 +22,7 @@ rule OTX_Reverse_Shell_Indicators
 {
     meta:
         description = "Detects common reverse shell indicators"
-        author = "Philipp Prautzsch / OTXv2"
+        author = "OTX-Sec"
         engine = "otx-native-yara"
         version = "0.1.1-alpha"
 
@@ -42,7 +42,7 @@ rule OTX_PowerShell_Loader
 {
     meta:
         description = "Detects suspicious PowerShell loader behavior"
-        author = "Philipp Prautzsch / OTXv2"
+        author = "OTX-Sec"
         engine = "otx-native-yara"
         version = "0.1.1-alpha"
 

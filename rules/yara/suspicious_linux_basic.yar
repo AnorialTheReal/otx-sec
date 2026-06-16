@@ -2,7 +2,7 @@ rule Suspicious_Linux_Shell_Dropper
 {
     meta:
         description = "Basic suspicious Linux shell/dropper strings"
-        author = "Anorial"
+        author = "OTX-Sec"
         severity = "medium"
 
     strings:
