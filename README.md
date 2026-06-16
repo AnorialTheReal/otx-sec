@@ -7,7 +7,7 @@ Open-Source Antivirus & Threat Intelligence Platform
 
 Created by **Anorial**
 
-OTX-Sec is an open-source antivirus and threat intelligence platform focused on Linux systems.
+OTX-Sec is an open-source Linux antivirus and threat intelligence platform.
 
 The goal of OTX-Sec is to combine traditional malware detection techniques with modern threat intelligence from multiple providers including:
 
@@ -43,7 +43,35 @@ OTX-Sec is already capable of:
 * Generating incidents
 * Displaying findings through a graphical interface
 
-The software is still experimental and should not be used as the only security solution protecting production systems.
+The software is still experimental and should not be used as the only antivirus solution protecting production systems.
+
+---
+
+# Antivirus Focus
+
+OTX-Sec is being developed as a Linux antivirus.
+
+Current antivirus capabilities include:
+
+* File scanning
+* Native malware heuristics
+* YARA rule based detection
+* Hash reputation checks
+* Static file analysis
+* Entropy analysis
+* Suspicious string detection
+* Quarantine support
+* GUI event review
+
+Future antivirus goals include:
+
+* Real-time protection
+* Better quarantine restore handling
+* Signature updates
+* Scan cache
+* Scheduled scans
+* More Linux malware rules
+* Lower false positives
 
 ---
 
@@ -332,26 +360,4 @@ False positives and false negatives are possible.
 
 Always verify detections before deleting or quarantining files.
 
-**Made with passion by the Anorial.**
-
----
-
-## 0.1.1-alpha Focus
-
-OTX-Sec 0.1.1-alpha is focused on improving the Linux scanner, native detection logic, YARA rule layer and threat intelligence workflow.
-
-Current 0.1.1-alpha improvements include:
-
-* Linux-first native scanner improvements
-* Linux reverse shell detection
-* Linux cron persistence detection
-* Linux downloader behavior detection
-* LD_PRELOAD hijack indicators
-* Improved YARA rule layer
-* Improved native engine report details
-* Single-file scan mode
-* Daemon mode improvements
-* English-only user-facing recommendations
-
-Windows support is not the current focus of 0.1.1-alpha.
-
+**Made with passion by Anorial.**
