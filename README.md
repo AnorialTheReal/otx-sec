@@ -318,7 +318,7 @@ You can contribute by:
 
 | Contributor | Hours |
 | ----------- | ----- |
-| Anorial     | 53    |
+| Anorial     | 68    |
 
 Add your name and hours when contributing.
 
@@ -332,7 +332,7 @@ False positives and false negatives are possible.
 
 Always verify detections before deleting or quarantining files.
 
-**Made with passion by Anorial.**
+**Made with passion by the Anorial.**
 
 ---
 
