@@ -1498,6 +1498,32 @@ def format_event_summary(event):
         for reason in threat_reasons[:20]:
             lines.append(f" - {reason}")
 
+    native_details = event.get("native_details") or {}
+
+    if event.get("engine") or event.get("native_score") is not None or native_details:
+        lines.append("")
+        lines.append("Native Engine")
+        lines.append("-------------------")
+        lines.append(f"Engine: {event.get('engine', 'otx-native')}")
+        lines.append(f"Output: {event.get('native_output', 'N/A')}")
+        lines.append(f"Native Score: {event.get('native_score', 0)}")
+
+        native_reasons = event.get("native_reasons", [])
+        if native_reasons:
+            lines.append("Native Reasons:")
+            for reason in native_reasons[:20]:
+                lines.append(f" - {reason}")
+
+        if native_details:
+            lines.append("Native Details:")
+            lines.append(f" - Engine Version: {native_details.get('engine_version', 'N/A')}")
+            lines.append(f" - Entropy: {native_details.get('entropy', 'N/A')}")
+            lines.append(f" - File Extension: {native_details.get('file_extension', 'N/A')}")
+            lines.append(f" - File Type: {native_details.get('file_type', 'unknown')}")
+            lines.append(f" - Hidden: {native_details.get('is_hidden', False)}")
+            lines.append(f" - Executable: {native_details.get('is_executable', False)}")
+            lines.append(f" - Script: {native_details.get('is_script', False)}")
+
     if providers:
         lines.append("")
         lines.append("Providers:")
