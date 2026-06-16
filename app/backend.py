@@ -35,6 +35,7 @@ LOGS = {
     "Persistence": "persistence_report.jsonl",
     "Integrity": "integrity_report.jsonl",
     "Auditd": "audit_report.jsonl",
+    "Kernel": "kernel_report.jsonl",
 }
 
 def ensure_dirs():
