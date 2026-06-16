@@ -75,7 +75,23 @@ def scan_file(path: str, rule_dir: str | None = None) -> dict:
             })
 
     if result["matches"]:
-        result["risk_score"] = min(100, len(result["matches"]) * 40)
+        # Score YARA matches by rule severity.
+        # This gives stronger rules more weight than simple match count.
+        severity_scores = {
+            "low": 10,
+            "medium": 30,
+            "high": 60,
+            "critical": 100,
+        }
+
+        score = 0
+
+        for match in result["matches"]:
+            meta = match.get("meta", {}) or {}
+            severity = str(meta.get("severity", "medium")).lower()
+            score += severity_scores.get(severity, 30)
+
+        result["risk_score"] = min(100, score)
 
     return result
 
