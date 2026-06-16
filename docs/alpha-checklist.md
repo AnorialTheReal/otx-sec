@@ -8,7 +8,7 @@
 - [x] MalwareBazaar provider
 - [x] URLHaus provider
 - [x] Static analysis engine
-- [x] Optional YARA engine
+- [x] Native OTXv2 engine
 - [x] File agent integration
 - [x] Network monitor integration
 - [x] GUI event summaries
@@ -26,7 +26,7 @@
 - [ ] ThreatEngine domain test
 - [ ] ThreatEngine URL test
 - [ ] Static analysis test
-- [ ] YARA engine test
+- [ ] Native engine test
 - [ ] GUI offscreen test
 - [ ] Git status clean
 - [ ] README updated
