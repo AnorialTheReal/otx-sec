@@ -36,7 +36,7 @@ def main():
                 "event": "MISSING_FILE",
                 "file": path,
                 "old_sha256": info["sha256"],
-                "recommendation": "Prüfen, ob Paketupdate oder verdächtige Löschung."
+                "recommendation": "Check whether this was caused by a package update or a suspicious deletion."
             })
             continue
 
@@ -50,7 +50,7 @@ def main():
                     "file": path,
                     "old_sha256": info["sha256"],
                     "new_sha256": current_hash,
-                    "recommendation": "Prüfen: pacman -Qo DATEI und pacman -Qkk PAKET."
+                    "recommendation": "Check with: pacman -Qo FILE and pacman -Qkk PACKAGE."
                 })
         except Exception as e:
             write_report({

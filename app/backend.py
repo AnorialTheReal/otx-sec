@@ -362,7 +362,7 @@ def recommendations():
     if s["suspicious"]:
         recs.append("Suspicious Events prüfen: Persistenz, Prozesse aus /tmp, Netzwerkverbindungen und auditd Events.")
     if s["quarantine"]:
-        recs.append("Quarantäne enthält Dateien. Nicht öffnen. Erst Hash bei VirusTotal/OTX prüfen.")
+        recs.append("Quarantine contains files. Do not open them. Check the hash with VirusTotal/OTX first.")
     recs.append("Nach vertrauenswürdigen Updates Baseline neu erstellen.")
     recs.append("Regelmäßig Integrity Check ausführen.")
     return recs

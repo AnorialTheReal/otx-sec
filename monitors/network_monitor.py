@@ -216,7 +216,7 @@ def scan_connections():
                 "status": conn.status,
                 "threat_reasons": threat.get("reasons", []),
                 "recommendation": (
-                    "Wenn unbekannt: Prozess prüfen, Hash berechnen, Datei quarantänen, IP manuell bei OTX/VirusTotal prüfen."
+                    "If unknown: review the process, calculate the hash, quarantine the file, and manually check the IP with OTX/VirusTotal."
                 ),
             }
 
