@@ -13,6 +13,7 @@ import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from engines.threat_engine import ThreatEngine
+from engines.yara_engine import scan_file as yara_scan_file
 from engines.static_analysis import analyze_file
 
 BASE_DIR = Path(os.environ.get("OTX_SEC_BASE_DIR", Path(__file__).resolve().parent))
@@ -449,10 +450,17 @@ def scan_file(path):
             threat.setdefault("reasons", []).append("blocklist_hash_match")
 
 
+        # YARA is part of the OTXv2 rule layer.
+        # It is not used as an external antivirus engine.
+        # We keep it optional at runtime so the agent does not crash
+        # if yara-python is missing on a test system.
+        yara_result = yara_scan_file(path)
+
         status = threat.get("verdict", "UNKNOWN")
         score = max(
             int(threat.get("score", 0)),
             int(static.get("risk_score", 0)),
+            int(yara_result.get("risk_score", 0)),
             int(native_score),
         )
 
@@ -481,6 +489,7 @@ def scan_file(path):
             "native_output": native_output,
             "native_score": native_score,
             "native_reasons": native_reasons,
+            "yara": yara_result,
             "threat_score": score,
             "threat_verdict": status,
             "threat_reasons": threat.get("reasons", []),
