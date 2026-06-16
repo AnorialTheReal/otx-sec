@@ -600,7 +600,11 @@ def main():
         return
 
     # Default behavior for service/daemon mode.
-    full_scan()
+    while True:
+        full_scan()
+        interval = runtime_scan_interval()
+        print(f"[*] Sleeping {interval}s", flush=True)
+        time.sleep(interval)
 
 
 if __name__ == "__main__":
