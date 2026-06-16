@@ -1,0 +1,2 @@
+encrypt_file target.doc
+ChaCha20 AES ransom payment bitcoin monero decrypt

