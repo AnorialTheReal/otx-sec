@@ -55,6 +55,14 @@ class ThreatEngine:
         return score, verdict, reasons
 
     def lookup_hash(self, sha256: str):
+        # Hash reputation layer.
+        # Every file scan should include these providers in the report:
+        # - OTX
+        # - MalwareBazaar
+        # - VirusTotal
+        #
+        # Missing API keys or provider errors must never crash the scanner.
+        # Providers return structured error objects instead.
         otx_result = self.otx.hash_lookup(sha256)
         mb_result = self.malwarebazaar.hash_lookup(sha256)
         vt_result = self.virustotal.hash_lookup(sha256)
