@@ -358,9 +358,9 @@ def recommendations():
     s = make_summary()
     recs = []
     if s["high"]:
-        recs.append("High-Risk Events prüfen: Quarantäne, Hash, Quelle und Prozesskontext ansehen.")
+        recs.append("Review high-risk events: inspect quarantine, hash, source, and process context.")
     if s["suspicious"]:
-        recs.append("Suspicious Events prüfen: Persistenz, Prozesse aus /tmp, Netzwerkverbindungen und auditd Events.")
+        recs.append("Review suspicious events: check persistence, processes running from /tmp, network connections, and auditd events.")
     if s["quarantine"]:
         recs.append("Quarantine contains files. Do not open them. Check the hash with VirusTotal/OTX first.")
     recs.append("Nach vertrauenswürdigen Updates Baseline neu erstellen.")

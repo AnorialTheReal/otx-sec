@@ -111,7 +111,7 @@ def check():
                 "time": datetime.now().isoformat(),
                 "event": "REMOVED_PERSISTENCE_FILE",
                 "file": path,
-                "recommendation": "Entfernung prüfen. Kann normal durch Updates sein."
+                "recommendation": "Review removal event. This may be normal after package updates."
             }
             write_report(entry)
             print(f"[!] Removed persistence file: {path}", flush=True)
