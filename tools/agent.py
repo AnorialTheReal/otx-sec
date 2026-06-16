@@ -59,6 +59,16 @@ EXCLUDE_DIRS = {
 SKIP_EXTENSIONS = {
     ".log",
     ".cache",
+
+    ".git",
+    ".github",
+    ".vscode",
+    ".vscode-remote",
+    "__pycache__",
+    "node_modules",
+    ".pytest_cache",
+    ".mypy_cache",
+    ".ruff_cache",
     ".tmp",
     ".db",
     ".sqlite",
