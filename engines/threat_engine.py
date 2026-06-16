@@ -1,7 +1,33 @@
+import json
+import time
+from pathlib import Path
 from integrations.otx import OTXProvider
 from integrations.malwarebazaar import MalwareBazaarProvider
 from integrations.virustotal import VirusTotalProvider
 from integrations.urlhaus import URLHausProvider
+
+
+BASE_DIR = Path(__file__).resolve().parent.parent
+CACHE_DIR = BASE_DIR / "tools" / "cache"
+CACHE_FILE = CACHE_DIR / "threat_intel_cache.json"
+CACHE_TTL_SECONDS = 60 * 60 * 24
+
+
+def _load_cache():
+    try:
+        if CACHE_FILE.exists():
+            return json.loads(CACHE_FILE.read_text())
+    except Exception:
+        pass
+    return {}
+
+
+def _save_cache(cache):
+    try:
+        CACHE_DIR.mkdir(parents=True, exist_ok=True)
+        CACHE_FILE.write_text(json.dumps(cache, indent=2, ensure_ascii=False))
+    except Exception:
+        pass
 
 
 class ThreatEngine:
@@ -55,24 +81,50 @@ class ThreatEngine:
         return score, verdict, reasons
 
     def lookup_hash(self, sha256: str):
+        # Hash reputation layer.
+        # Every file scan should include these providers in the report:
+        # - OTX
+        # - MalwareBazaar
+        # - VirusTotal
+        #
+        # Missing API keys or provider errors must never crash the scanner.
+        # Provider results are cached to reduce repeated API calls and speed up scans.
+        cache_key = f"hash:{sha256}"
+        cache = _load_cache()
+        cached = cache.get(cache_key)
+
+        if cached and time.time() - cached.get("time", 0) < CACHE_TTL_SECONDS:
+            result = cached.get("result", {})
+            result["cache_hit"] = True
+            return result
+
         otx_result = self.otx.hash_lookup(sha256)
         mb_result = self.malwarebazaar.hash_lookup(sha256)
         vt_result = self.virustotal.hash_lookup(sha256)
 
         score, verdict, reasons = self.score_hash_result(otx_result, mb_result, vt_result)
 
-        return {
+        result = {
             "type": "hash",
             "indicator": sha256,
             "score": score,
             "verdict": verdict,
             "reasons": reasons,
+            "cache_hit": False,
             "providers": {
                 "otx": otx_result,
                 "malwarebazaar": mb_result,
                 "virustotal": vt_result,
             },
         }
+
+        cache[cache_key] = {
+            "time": time.time(),
+            "result": result,
+        }
+        _save_cache(cache)
+
+        return result
 
     def lookup_ip(self, ip: str):
         otx_result = self.otx.ip_lookup(ip)

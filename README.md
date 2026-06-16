@@ -7,7 +7,7 @@ Open-Source Antivirus & Threat Intelligence Platform
 
 Created by **Anorial**
 
-OTX-Sec is an open-source antivirus and threat intelligence platform focused on Linux systems.
+OTX-Sec is an open-source Linux antivirus and threat intelligence platform.
 
 The goal of OTX-Sec is to combine traditional malware detection techniques with modern threat intelligence from multiple providers including:
 
@@ -26,7 +26,7 @@ This project is licensed under the GNU Affero General Public License v3 (AGPLv3)
 
 Version:
 
-0.1.0-alpha
+0.1.1-alpha
 
 State:
 
@@ -39,11 +39,39 @@ OTX-Sec is already capable of:
 * Monitoring network activity
 * Performing threat intelligence lookups
 * Running static analysis
-* Running optional YARA scans
+* Running native OTXv2 scan checks
 * Generating incidents
 * Displaying findings through a graphical interface
 
-The software is still experimental and should not be used as the only security solution protecting production systems.
+The software is still experimental and should not be used as the only antivirus solution protecting production systems.
+
+---
+
+# Antivirus Focus
+
+OTX-Sec is being developed as a Linux antivirus.
+
+Current antivirus capabilities include:
+
+* File scanning
+* Native malware heuristics
+* YARA rule based detection
+* Hash reputation checks
+* Static file analysis
+* Entropy analysis
+* Suspicious string detection
+* Quarantine support
+* GUI event review
+
+Future antivirus goals include:
+
+* Real-time protection
+* Better quarantine restore handling
+* Signature updates
+* Scan cache
+* Scheduled scans
+* More Linux malware rules
+* Lower false positives
 
 ---
 
@@ -71,13 +99,13 @@ Supported Indicators:
 
 Current Detection Methods:
 
-* ClamAV integration
+* Native OTXv2 detection engine
 * SHA256 hashing
 * Threat intelligence lookups
 * Static file analysis
 * Entropy analysis
 * Suspicious string detection
-* Optional YARA scanning
+* Native suspicious pattern analysis
 
 ---
 
@@ -115,7 +143,7 @@ OTX-Sec currently includes:
 * Process Monitoring View
 * Network Monitoring View
 * Static Analysis Results
-* YARA Results
+* Native Engine Results
 
 ---
 
@@ -150,7 +178,7 @@ engines/
 * Risk engine
 * Incident engine
 * Static analysis engine
-* YARA engine
+* Native OTXv2 engine
 
 integrations/
 
@@ -257,17 +285,17 @@ Features:
 
 ---
 
-# YARA
+# Native OTXv2 Engine
 
-YARA support is optional.
+OTXv2 uses its own native detection logic.
 
 Example:
 
 ```bash
-python -m engines.yara_engine /bin/ls
+python tools/agent.py --scan /bin/ls
 ```
 
-If yara-python is not installed, OTX-Sec continues working without crashing.
+OTXv2 does not require external antivirus engines for native detection.
 
 ---
 
@@ -305,7 +333,7 @@ You can contribute by:
 * Testing
 * Reporting bugs
 * Improving documentation
-* Writing YARA rules
+* Improving native OTXv2 detection rules
 * Improving threat intelligence integrations
 * Writing Rust modules
 * Writing C/C++ modules

@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import os
+import argparse
 import json
 import time
 import hashlib
@@ -13,8 +14,9 @@ import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from engines.threat_engine import ThreatEngine
-from engines.static_analysis import analyze_file
 from engines.yara_engine import scan_file as yara_scan_file
+from engines.static_analysis import analyze_file
+from tools.secrets import merge_settings_with_secrets
 
 BASE_DIR = Path(os.environ.get("OTX_SEC_BASE_DIR", Path(__file__).resolve().parent))
 DATA_DIR = Path(os.environ.get("OTX_SEC_DATA_DIR", BASE_DIR / "data"))
@@ -58,6 +60,16 @@ EXCLUDE_DIRS = {
 SKIP_EXTENSIONS = {
     ".log",
     ".cache",
+
+    ".git",
+    ".github",
+    ".vscode",
+    ".vscode-remote",
+    "__pycache__",
+    "node_modules",
+    ".pytest_cache",
+    ".mypy_cache",
+    ".ruff_cache",
     ".tmp",
     ".db",
     ".sqlite",
@@ -106,7 +118,7 @@ def load_settings():
     }
 
     if not CONFIG_FILE.exists():
-        return default
+        return merge_settings_with_secrets(default)
 
     try:
         data = json.loads(CONFIG_FILE.read_text())
@@ -114,9 +126,9 @@ def load_settings():
             return default
         for k, v in default.items():
             data.setdefault(k, v)
-        return data
+        return merge_settings_with_secrets(data)
     except Exception:
-        return default
+        return merge_settings_with_secrets(default)
 
 
 def expand_path(value):
@@ -265,23 +277,48 @@ def load_hash_list(name):
 
 
 def otx_native_scan(path):
+    # Native OTXv2 detection layer.
+    # This is our own engine logic. YARA is a separate OTXv2 rule layer.
     reasons = []
     score = 0
+    file_path = Path(path)
+
+    details = {
+        "engine_version": "0.1.1-alpha",
+        "entropy": 0.0,
+        "file_extension": file_path.suffix.lower(),
+        "is_hidden": file_path.name.startswith("."),
+        "is_executable": False,
+        "is_script": False,
+        "file_type": "unknown",
+    }
 
     try:
-        data = Path(path).read_bytes()
+        data = file_path.read_bytes()
     except Exception as e:
-        return False, f"native_error: {e}", 0, ["read_error"]
+        return False, f"native_error: {e}", 0, ["read_error"], details
 
     size = len(data)
     if size == 0:
-        return False, "CLEAN_NATIVE", 0, ["empty_file"]
+        return False, "CLEAN_NATIVE", 0, ["empty_file"], details
+
+    try:
+        mode = file_path.stat().st_mode
+        details["is_executable"] = bool(mode & 0o111)
+    except Exception:
+        pass
+
+    if data.startswith(b"#!"):
+        details["is_script"] = True
+        score += 8
+        reasons.append("script_shebang")
 
     freq = {}
     for b in data:
         freq[b] = freq.get(b, 0) + 1
 
     entropy = -sum((c / size) * math.log2(c / size) for c in freq.values())
+    details["entropy"] = round(entropy, 4)
 
     if entropy >= 7.8:
         score += 40
@@ -305,19 +342,23 @@ def otx_native_scan(path):
             reasons.append("native_marker:" + marker.decode(errors="ignore"))
 
     if data.startswith(b"\x7fELF"):
+        details["file_type"] = "elf"
         reasons.append("elf_binary")
         if entropy >= 7.0:
             score += 15
             reasons.append("packed_like_elf")
 
-    if data.startswith(b"MZ"):
+    elif data.startswith(b"MZ"):
+        details["file_type"] = "pe"
         reasons.append("pe_binary")
         if entropy >= 7.0:
             score += 15
             reasons.append("packed_like_pe")
 
-    file_path = Path(path)
-    suffix = file_path.suffix.lower()
+    elif details["is_script"]:
+        details["file_type"] = "script"
+
+    suffix = details["file_extension"]
 
     suspicious_exts = {
         ".sh", ".py", ".pl", ".rb", ".php", ".js",
@@ -328,28 +369,20 @@ def otx_native_scan(path):
         score += 8
         reasons.append("suspicious_extension:" + suffix)
 
-    if file_path.name.startswith(".") and suffix in suspicious_exts:
+    if details["is_hidden"] and suffix in suspicious_exts:
         score += 10
         reasons.append("hidden_executable_like_file")
 
-    try:
-        mode = file_path.stat().st_mode
-        if mode & 0o111:
-            score += 8
-            reasons.append("executable_permission")
-    except Exception:
-        pass
-
-    if data.startswith(b"#!"):
+    if details["is_executable"]:
         score += 8
-        reasons.append("script_shebang")
+        reasons.append("executable_permission")
 
     if score >= 70:
-        return True, "MALICIOUS_NATIVE", score, reasons
+        return True, "MALICIOUS_NATIVE", score, reasons, details
     if score >= 40:
-        return True, "SUSPICIOUS_NATIVE", score, reasons
+        return True, "SUSPICIOUS_NATIVE", score, reasons, details
 
-    return False, "CLEAN_NATIVE", score, reasons
+    return False, "CLEAN_NATIVE", score, reasons, details
 
 
 def quarantine(path, file_hash):
@@ -378,6 +411,31 @@ def quarantine(path, file_hash):
 def write_report(entry):
     with open(REPORT_FILE, "a", encoding="utf-8") as f:
         f.write(json.dumps(entry, ensure_ascii=False) + "\n")
+
+
+def load_scan_cache():
+    try:
+        if SCAN_CACHE_FILE.exists():
+            return json.loads(SCAN_CACHE_FILE.read_text())
+    except Exception:
+        pass
+    return {}
+
+
+def save_scan_cache(cache):
+    try:
+        SCAN_CACHE_DIR.mkdir(parents=True, exist_ok=True)
+        SCAN_CACHE_FILE.write_text(json.dumps(cache, indent=2, ensure_ascii=False))
+    except Exception:
+        pass
+
+
+def file_cache_key(path, file_hash, size):
+    try:
+        stat = Path(path).stat()
+        return f"{file_hash}:{size}:{int(stat.st_mtime)}"
+    except Exception:
+        return f"{file_hash}:{size}:unknown"
 
 
 def scan_file(path):
@@ -432,7 +490,7 @@ def scan_file(path):
             print(f"[BLOCK] {path}", flush=True)
             return
 
-        native_hit, native_output, native_score, native_reasons = otx_native_scan(path)
+        native_hit, native_output, native_score, native_reasons, native_details = otx_native_scan(path)
 
         allowlist = load_hash_list("allowlist.json")
         blocklist = load_hash_list("blocklist.json")
@@ -449,8 +507,11 @@ def scan_file(path):
             threat["verdict"] = "MALICIOUS"
             threat.setdefault("reasons", []).append("blocklist_hash_match")
 
-        # YARA is optional. If yara-python is missing, the engine returns an error
-        # but the agent continues scanning without crashing.
+
+        # YARA is part of the OTXv2 rule layer.
+        # It is not used as an external antivirus engine.
+        # We keep it optional at runtime so the agent does not crash
+        # if yara-python is missing on a test system.
         yara_result = yara_scan_file(path)
 
         status = threat.get("verdict", "UNKNOWN")
@@ -458,6 +519,7 @@ def scan_file(path):
             int(threat.get("score", 0)),
             int(static.get("risk_score", 0)),
             int(yara_result.get("risk_score", 0)),
+            int(native_score),
         )
 
         if static.get("risk_score", 0) >= 50 and status == "CLEAN":
@@ -485,12 +547,13 @@ def scan_file(path):
             "native_output": native_output,
             "native_score": native_score,
             "native_reasons": native_reasons,
+            "native_details": native_details,
+            "yara": yara_result,
             "threat_score": score,
             "threat_verdict": status,
             "threat_reasons": threat.get("reasons", []),
             "threat_providers": threat.get("providers", {}),
             "static_analysis": static,
-            "yara": yara_result,
             "status": status,
             "quarantine_path": quarantine_path,
             "quarantine_error": quarantine_error,
@@ -559,6 +622,20 @@ def full_scan():
 
 
 def main():
+    parser = argparse.ArgumentParser(description="OTXv2 security agent")
+    parser.add_argument("--scan", help="Scan exactly one file and exit")
+    parser.add_argument("--full-scan", action="store_true", help="Scan all configured paths")
+    args = parser.parse_args()
+
+    if args.scan:
+        scan_file(args.scan)
+        return
+
+    if args.full_scan:
+        full_scan()
+        return
+
+    # Default behavior for service/daemon mode.
     while True:
         full_scan()
         interval = runtime_scan_interval()

@@ -1,0 +1,2 @@
+./xmrig -o stratum+tcp://pool.example:3333 -u wallet
+monero cryptonight miner started

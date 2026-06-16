@@ -1,5 +1,6 @@
 import os, json, shutil, hashlib, subprocess
 from pathlib import Path
+from tools.secrets import split_settings_and_secrets, save_secrets, merge_settings_with_secrets
 from datetime import datetime
 
 # Safe path handling:
@@ -65,40 +66,42 @@ def load_settings():
 
     if not CONFIG_FILE.exists():
         save_settings(default)
-        return default
+        return merge_settings_with_secrets(default)
 
     try:
         data = json.loads(CONFIG_FILE.read_text())
         for k, v in default.items():
             data.setdefault(k, v)
-        return data
+        return merge_settings_with_secrets(data)
     except Exception:
-        return default
+        return merge_settings_with_secrets(default)
 
 
 def save_settings(data):
-    ensure_dirs()
+    CONFIG_DIR.mkdir(parents=True, exist_ok=True)
 
-    safe = {
-        "otx_api_key": data.get("otx_api_key", "").strip(),
-        "virustotal_api_key": data.get("virustotal_api_key", "").strip(),
-        "abuseipdb_api_key": data.get("abuseipdb_api_key", "").strip(),
-        "greynoise_api_key": data.get("greynoise_api_key", "").strip(),
-        "shodan_api_key": data.get("shodan_api_key", "").strip(),
-        "malwarebazaar_api_key": data.get("malwarebazaar_api_key", "").strip(),
-        "urlhaus_enabled": bool(data.get("urlhaus_enabled", True)),
-        "auto_quarantine": bool(data.get("auto_quarantine", True)),
-        "auto_otx_lookup": bool(data.get("auto_otx_lookup", True)),
-        "auto_vt_lookup": bool(data.get("auto_vt_lookup", False)),
-    }
+    public_settings, secret_settings = split_settings_and_secrets(data)
+    save_secrets(secret_settings)
 
-    CONFIG_FILE.write_text(json.dumps(safe, indent=2))
-    os.chmod(CONFIG_FILE, 0o600)
+    CONFIG_FILE.write_text(json.dumps({
+        "urlhaus_enabled": bool(public_settings.get("urlhaus_enabled", True)),
+        "auto_quarantine": bool(public_settings.get("auto_quarantine", True)),
+        "auto_otx_lookup": bool(public_settings.get("auto_otx_lookup", True)),
+        "auto_vt_lookup": bool(public_settings.get("auto_vt_lookup", False)),
+    }, indent=2))
 
 def save_settings(data):
-    ensure_dirs()
-    CONFIG_FILE.write_text(json.dumps(data, indent=2))
-    os.chmod(CONFIG_FILE, 0o600)
+    CONFIG_DIR.mkdir(parents=True, exist_ok=True)
+
+    public_settings, secret_settings = split_settings_and_secrets(data)
+    save_secrets(secret_settings)
+
+    CONFIG_FILE.write_text(json.dumps({
+        "urlhaus_enabled": bool(public_settings.get("urlhaus_enabled", True)),
+        "auto_quarantine": bool(public_settings.get("auto_quarantine", True)),
+        "auto_otx_lookup": bool(public_settings.get("auto_otx_lookup", True)),
+        "auto_vt_lookup": bool(public_settings.get("auto_vt_lookup", False)),
+    }, indent=2))
 
 def _load_list(path):
     ensure_dirs()
@@ -358,11 +361,11 @@ def recommendations():
     s = make_summary()
     recs = []
     if s["high"]:
-        recs.append("High-Risk Events prüfen: Quarantäne, Hash, Quelle und Prozesskontext ansehen.")
+        recs.append("Review high-risk events: inspect quarantine, hash, source, and process context.")
     if s["suspicious"]:
-        recs.append("Suspicious Events prüfen: Persistenz, Prozesse aus /tmp, Netzwerkverbindungen und auditd Events.")
+        recs.append("Review suspicious events: check persistence, processes running from /tmp, network connections, and auditd events.")
     if s["quarantine"]:
-        recs.append("Quarantäne enthält Dateien. Nicht öffnen. Erst Hash bei VirusTotal/OTX prüfen.")
+        recs.append("Quarantine contains files. Do not open them. Check the hash with VirusTotal/OTX first.")
     recs.append("Nach vertrauenswürdigen Updates Baseline neu erstellen.")
     recs.append("Regelmäßig Integrity Check ausführen.")
     return recs
@@ -860,35 +863,29 @@ def load_settings():
 
     if not CONFIG_FILE.exists():
         save_settings(default)
-        return default
+        return merge_settings_with_secrets(default)
 
     try:
         data = json.loads(CONFIG_FILE.read_text())
         for k, v in default.items():
             data.setdefault(k, v)
-        return data
+        return merge_settings_with_secrets(data)
     except Exception:
-        return default
+        return merge_settings_with_secrets(default)
 
 
 def save_settings(data):
-    ensure_dirs()
-    safe = {
-        "otx_api_key": data.get("otx_api_key", "").strip(),
-        "virustotal_api_key": data.get("virustotal_api_key", "").strip(),
-        "abuseipdb_api_key": data.get("abuseipdb_api_key", "").strip(),
-        "greynoise_api_key": data.get("greynoise_api_key", "").strip(),
-        "shodan_api_key": data.get("shodan_api_key", "").strip(),
-        "malwarebazaar_api_key": data.get("malwarebazaar_api_key", "").strip(),
-        "ipinfo_api_key": data.get("ipinfo_api_key", "").strip(),
-        "urlhaus_enabled": bool(data.get("urlhaus_enabled", True)),
-        "auto_quarantine": bool(data.get("auto_quarantine", True)),
-        "auto_otx_lookup": bool(data.get("auto_otx_lookup", True)),
-        "auto_vt_lookup": bool(data.get("auto_vt_lookup", False)),
-    }
-    CONFIG_FILE.write_text(json.dumps(safe, indent=2))
-    os.chmod(CONFIG_FILE, 0o600)
+    CONFIG_DIR.mkdir(parents=True, exist_ok=True)
 
+    public_settings, secret_settings = split_settings_and_secrets(data)
+    save_secrets(secret_settings)
+
+    CONFIG_FILE.write_text(json.dumps({
+        "urlhaus_enabled": bool(public_settings.get("urlhaus_enabled", True)),
+        "auto_quarantine": bool(public_settings.get("auto_quarantine", True)),
+        "auto_otx_lookup": bool(public_settings.get("auto_otx_lookup", True)),
+        "auto_vt_lookup": bool(public_settings.get("auto_vt_lookup", False)),
+    }, indent=2))
 
 def ipinfo_lookup(ip):
     try:
@@ -1498,6 +1495,32 @@ def format_event_summary(event):
         for reason in threat_reasons[:20]:
             lines.append(f" - {reason}")
 
+    native_details = event.get("native_details") or {}
+
+    if event.get("engine") or event.get("native_score") is not None or native_details:
+        lines.append("")
+        lines.append("Native Engine")
+        lines.append("-------------------")
+        lines.append(f"Engine: {event.get('engine', 'otx-native')}")
+        lines.append(f"Output: {event.get('native_output', 'N/A')}")
+        lines.append(f"Native Score: {event.get('native_score', 0)}")
+
+        native_reasons = event.get("native_reasons", [])
+        if native_reasons:
+            lines.append("Native Reasons:")
+            for reason in native_reasons[:20]:
+                lines.append(f" - {reason}")
+
+        if native_details:
+            lines.append("Native Details:")
+            lines.append(f" - Engine Version: {native_details.get('engine_version', 'N/A')}")
+            lines.append(f" - Entropy: {native_details.get('entropy', 'N/A')}")
+            lines.append(f" - File Extension: {native_details.get('file_extension', 'N/A')}")
+            lines.append(f" - File Type: {native_details.get('file_type', 'unknown')}")
+            lines.append(f" - Hidden: {native_details.get('is_hidden', False)}")
+            lines.append(f" - Executable: {native_details.get('is_executable', False)}")
+            lines.append(f" - Script: {native_details.get('is_script', False)}")
+
     if providers:
         lines.append("")
         lines.append("Providers:")
@@ -1567,6 +1590,12 @@ def format_event_summary(event):
 
         lines.append(
             f"Risk Score: {yara_result.get('risk_score', 0)}"
+        )
+        lines.append(
+            f"Match Count: {yara_result.get('match_count', len(yara_result.get('matches', [])))}"
+        )
+        lines.append(
+            f"Highest Severity: {str(yara_result.get('highest_severity', 'none')).upper()}"
         )
 
         if yara_result.get("error"):

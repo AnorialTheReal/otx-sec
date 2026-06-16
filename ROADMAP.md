@@ -16,7 +16,7 @@ Functional Linux Alpha Release
 * URLHaus Integration
 * Threat Engine CLI
 * Static Analysis Engine
-* YARA Engine
+* Native OTXv2 Engine
 * File Scan Agent
 * Process Monitor
 * Network Monitor
@@ -67,7 +67,7 @@ Detection Improvements
 
 Planned:
 
-* Advanced YARA Rules
+* Advanced Native Detection Rules
 * ELF Analysis
 * PE Analysis
 * Packed Binary Detection

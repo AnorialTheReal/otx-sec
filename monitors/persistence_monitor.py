@@ -88,7 +88,7 @@ def check():
                 "event": "NEW_PERSISTENCE_FILE",
                 "file": path,
                 "sha256": info["sha256"],
-                "recommendation": "Prüfen: systemctl cat DATEI / Inhalt ansehen / unbekannte Autostarts deaktivieren."
+                "recommendation": "Review with: systemctl cat FILE. Inspect the content and disable unknown autostarts."
             }
             write_report(entry)
             print(f"[!] New persistence file: {path}", flush=True)
@@ -100,7 +100,7 @@ def check():
                 "file": path,
                 "old_sha256": baseline[path]["sha256"],
                 "new_sha256": info["sha256"],
-                "recommendation": "Änderung prüfen. Wenn unbekannt: Datei sichern, Hash prüfen, Service deaktivieren."
+                "recommendation": "Review the change. If unknown: back up the file, verify the hash, and disable the service."
             }
             write_report(entry)
             print(f"[!] Changed persistence file: {path}", flush=True)
@@ -111,7 +111,7 @@ def check():
                 "time": datetime.now().isoformat(),
                 "event": "REMOVED_PERSISTENCE_FILE",
                 "file": path,
-                "recommendation": "Entfernung prüfen. Kann normal durch Updates sein."
+                "recommendation": "Review removal event. This may be normal after package updates."
             }
             write_report(entry)
             print(f"[!] Removed persistence file: {path}", flush=True)

@@ -46,7 +46,7 @@ def scan_processes():
                         "exe": exe,
                         "user": proc.info["username"],
                         "cmdline": proc.info["cmdline"],
-                        "recommendation": "Prozess prüfen. Wenn unbekannt: kill PID, Hash berechnen, Datei quarantänen."
+                        "recommendation": "Review the process. If unknown: kill the PID, calculate the hash, and quarantine the file."
                     }
 
                     write_report(entry)
