@@ -265,23 +265,48 @@ def load_hash_list(name):
 
 
 def otx_native_scan(path):
+    # Native OTXv2 detection layer.
+    # This is our own engine logic. YARA is a separate OTXv2 rule layer.
     reasons = []
     score = 0
+    file_path = Path(path)
+
+    details = {
+        "engine_version": "0.1.1-alpha",
+        "entropy": 0.0,
+        "file_extension": file_path.suffix.lower(),
+        "is_hidden": file_path.name.startswith("."),
+        "is_executable": False,
+        "is_script": False,
+        "file_type": "unknown",
+    }
 
     try:
-        data = Path(path).read_bytes()
+        data = file_path.read_bytes()
     except Exception as e:
-        return False, f"native_error: {e}", 0, ["read_error"]
+        return False, f"native_error: {e}", 0, ["read_error"], details
 
     size = len(data)
     if size == 0:
-        return False, "CLEAN_NATIVE", 0, ["empty_file"]
+        return False, "CLEAN_NATIVE", 0, ["empty_file"], details
+
+    try:
+        mode = file_path.stat().st_mode
+        details["is_executable"] = bool(mode & 0o111)
+    except Exception:
+        pass
+
+    if data.startswith(b"#!"):
+        details["is_script"] = True
+        score += 8
+        reasons.append("script_shebang")
 
     freq = {}
     for b in data:
         freq[b] = freq.get(b, 0) + 1
 
     entropy = -sum((c / size) * math.log2(c / size) for c in freq.values())
+    details["entropy"] = round(entropy, 4)
 
     if entropy >= 7.8:
         score += 40
@@ -305,19 +330,23 @@ def otx_native_scan(path):
             reasons.append("native_marker:" + marker.decode(errors="ignore"))
 
     if data.startswith(b"\x7fELF"):
+        details["file_type"] = "elf"
         reasons.append("elf_binary")
         if entropy >= 7.0:
             score += 15
             reasons.append("packed_like_elf")
 
-    if data.startswith(b"MZ"):
+    elif data.startswith(b"MZ"):
+        details["file_type"] = "pe"
         reasons.append("pe_binary")
         if entropy >= 7.0:
             score += 15
             reasons.append("packed_like_pe")
 
-    file_path = Path(path)
-    suffix = file_path.suffix.lower()
+    elif details["is_script"]:
+        details["file_type"] = "script"
+
+    suffix = details["file_extension"]
 
     suspicious_exts = {
         ".sh", ".py", ".pl", ".rb", ".php", ".js",
@@ -328,28 +357,20 @@ def otx_native_scan(path):
         score += 8
         reasons.append("suspicious_extension:" + suffix)
 
-    if file_path.name.startswith(".") and suffix in suspicious_exts:
+    if details["is_hidden"] and suffix in suspicious_exts:
         score += 10
         reasons.append("hidden_executable_like_file")
 
-    try:
-        mode = file_path.stat().st_mode
-        if mode & 0o111:
-            score += 8
-            reasons.append("executable_permission")
-    except Exception:
-        pass
-
-    if data.startswith(b"#!"):
+    if details["is_executable"]:
         score += 8
-        reasons.append("script_shebang")
+        reasons.append("executable_permission")
 
     if score >= 70:
-        return True, "MALICIOUS_NATIVE", score, reasons
+        return True, "MALICIOUS_NATIVE", score, reasons, details
     if score >= 40:
-        return True, "SUSPICIOUS_NATIVE", score, reasons
+        return True, "SUSPICIOUS_NATIVE", score, reasons, details
 
-    return False, "CLEAN_NATIVE", score, reasons
+    return False, "CLEAN_NATIVE", score, reasons, details
 
 
 def quarantine(path, file_hash):
@@ -432,7 +453,7 @@ def scan_file(path):
             print(f"[BLOCK] {path}", flush=True)
             return
 
-        native_hit, native_output, native_score, native_reasons = otx_native_scan(path)
+        native_hit, native_output, native_score, native_reasons, native_details = otx_native_scan(path)
 
         allowlist = load_hash_list("allowlist.json")
         blocklist = load_hash_list("blocklist.json")
@@ -489,6 +510,7 @@ def scan_file(path):
             "native_output": native_output,
             "native_score": native_score,
             "native_reasons": native_reasons,
+            "native_details": native_details,
             "yara": yara_result,
             "threat_score": score,
             "threat_verdict": status,
