@@ -1580,6 +1580,37 @@ def format_event_summary(event):
 
     yara_result = event.get("yara") or {}
 
+    rust_result = event.get("rust") or {}
+
+    if rust_result:
+        lines.append("")
+        lines.append("Rust Native Analysis")
+        lines.append("-------------------")
+        lines.append(f"Available: {rust_result.get('available', False)}")
+        lines.append(f"Engine: {rust_result.get('engine', 'otx-rust')}")
+        lines.append(f"Risk Score: {rust_result.get('risk_score', 0)}")
+        lines.append(f"Entropy: {rust_result.get('entropy', 'N/A')}")
+        lines.append(f"ELF: {rust_result.get('is_elf', False)}")
+        lines.append(f"ELF Arch: {rust_result.get('elf_arch', 'unknown')}")
+        lines.append(f"PE: {rust_result.get('is_pe', False)}")
+        lines.append(f"PE Arch: {rust_result.get('pe_arch', 'unknown')}")
+        lines.append(f"String Count: {rust_result.get('string_count', 0)}")
+
+        if rust_result.get("error"):
+            lines.append(f"Error: {rust_result.get('error')}")
+
+        rust_reasons = rust_result.get("reasons", [])
+        if rust_reasons:
+            lines.append("Reasons:")
+            for reason in rust_reasons[:20]:
+                lines.append(f" - {reason}")
+
+        rust_strings = rust_result.get("suspicious_strings", [])
+        if rust_strings:
+            lines.append("Suspicious Strings:")
+            for item in rust_strings[:20]:
+                lines.append(f" - {item}")
+
     if yara_result:
         lines.append("")
         lines.append("YARA Analysis")
