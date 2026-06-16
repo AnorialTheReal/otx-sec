@@ -26,7 +26,7 @@ This project is licensed under the GNU Affero General Public License v3 (AGPLv3)
 
 Version:
 
-0.1.0-alpha
+0.1.1-alpha
 
 State:
 
@@ -333,3 +333,25 @@ False positives and false negatives are possible.
 Always verify detections before deleting or quarantining files.
 
 **Made with passion by Anorial.**
+
+---
+
+## 0.1.1-alpha Focus
+
+OTX-Sec 0.1.1-alpha is focused on improving the Linux scanner, native detection logic, YARA rule layer and threat intelligence workflow.
+
+Current 0.1.1-alpha improvements include:
+
+* Linux-first native scanner improvements
+* Linux reverse shell detection
+* Linux cron persistence detection
+* Linux downloader behavior detection
+* LD_PRELOAD hijack indicators
+* Improved YARA rule layer
+* Improved native engine report details
+* Single-file scan mode
+* Daemon mode improvements
+* English-only user-facing recommendations
+
+Windows support is not the current focus of 0.1.1-alpha.
+
