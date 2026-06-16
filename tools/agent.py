@@ -100,6 +100,13 @@ SCAN_CACHE_DIR = Path(os.environ.get("OTX_SEC_SCAN_CACHE_DIR", DATA_DIR / "cache
 SCAN_CACHE_FILE = SCAN_CACHE_DIR / "file_scan_cache.json"
 SCAN_INTERVAL = int(os.environ.get("OTX_SEC_SCAN_INTERVAL", "300"))
 
+# Optional Rust native scanner.
+# The Python agent continues working if the Rust scanner is not built.
+RUST_SCANNER_BIN = Path(os.environ.get(
+    "OTX_SEC_RUST_SCANNER",
+    Path(__file__).resolve().parent.parent / "native" / "rust" / "otxscan" / "target" / "debug" / "otxscan"
+))
+
 os.makedirs(QUARANTINE_DIR, exist_ok=True)
 os.makedirs(os.path.dirname(REPORT_FILE), exist_ok=True)
 os.makedirs(CONFIG_DIR, exist_ok=True)
@@ -443,6 +450,46 @@ def file_cache_key(path, file_hash, size):
         return f"{file_hash}:{size}:unknown"
 
 
+def rust_native_scan(path):
+    # Run the optional Rust native scanner.
+    # Rust handles fast hashing, entropy, ELF/PE checks and string extraction.
+    if not RUST_SCANNER_BIN.exists():
+        return {
+            "available": False,
+            "error": "Rust scanner binary not found",
+            "risk_score": 0,
+            "reasons": [],
+        }
+
+    try:
+        result = subprocess.run(
+            [str(RUST_SCANNER_BIN), str(path)],
+            capture_output=True,
+            text=True,
+            timeout=20,
+        )
+
+        if result.returncode != 0:
+            return {
+                "available": False,
+                "error": result.stderr.strip() or result.stdout.strip(),
+                "risk_score": 0,
+                "reasons": [],
+            }
+
+        data = json.loads(result.stdout.strip())
+        data["available"] = True
+        return data
+
+    except Exception as error:
+        return {
+            "available": False,
+            "error": str(error),
+            "risk_score": 0,
+            "reasons": [],
+        }
+
+
 def scan_file(path):
     if should_skip_file(path):
         return
@@ -532,8 +579,15 @@ def scan_file(path):
         # We keep it optional at runtime so the agent does not crash
         # if yara-python is missing on a test system.
         yara_result = yara_scan_file(path)
+        rust_result = rust_native_scan(path)
 
         status = threat.get("verdict", "UNKNOWN")
+        rust_score = int(rust_result.get("risk_score", 0)) if rust_result.get("available") else 0
+
+        if rust_result.get("available"):
+            threat.setdefault("reasons", [])
+            threat["reasons"].extend(rust_result.get("reasons", []))
+
         score = max(
             int(threat.get("score", 0)),
             int(static.get("risk_score", 0)),
@@ -568,6 +622,7 @@ def scan_file(path):
             "native_reasons": native_reasons,
             "native_details": native_details,
             "yara": yara_result,
+            "rust": rust_result,
             "threat_score": score,
             "threat_verdict": status,
             "threat_reasons": threat.get("reasons", []),
