@@ -593,6 +593,7 @@ def scan_file(path):
             int(static.get("risk_score", 0)),
             int(yara_result.get("risk_score", 0)),
             int(native_score),
+            int(rust_score),
         )
 
         if static.get("risk_score", 0) >= 50 and status == "CLEAN":
