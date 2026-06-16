@@ -318,7 +318,7 @@ You can contribute by:
 
 | Contributor | Hours |
 | ----------- | ----- |
-| Anorial     | 53    |
+| Anorial     | 68    |
 
 Add your name and hours when contributing.
 
